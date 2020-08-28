@@ -1,0 +1,70 @@
+New in RMAD-EDGE software version SW_VERTION: 6
+
+	new features:
+
+	-RMAD-EDGE SW6 replaces RMAD-railway.  
+	-Disable ACP0 and ACP1 interupts on boot and when mote is lost. Should hopefully fix infinite reboot cycles togeter with full system reset on fail to connect.
+	-Updatet all relavant files with check on HW_REVITION number, to allow backwards compability for HW_REVITION 4 & 5. Older revitions are discontinued
+	-New debug output from EFM32 on UART1 using retargeio.c  (baudrate:115200)
+	-AUX data functions updatet making it possible to include AD channels before and after turning on preamp, as well as SDV and Mean values
+	-Implementeted transport mode function, requiering hard reset to recover.
+	-Implementet communication with Windwand W29N01HV Nandflash for HW revision 6
+	-Removed possibility to retrive list of datasets in Nandflash (IMSG_LISTDATA)
+
+	
+	new and changed functions:
+	
+		config.c
+			-GPIO_setup() - accounting for changes with HW_REVITION 6
+			-charge_mode() - to allow fast charge with HW_REVITION 6 (obs, diode i testprint ble varm)
+			-dust_mote_reset() - new function for mote reset. Soft reset for HW_REVITION<6, Hard reset for HW_REVITION>=6
+			-dust_mote_sleep() - function to sent mote to deep sleep, requires hard reset to recover
+			-battery_charge_status() - mote reset function changed to efm32_reset()
+			-efm32_reset() - full system reset using NVIC_SystemReset()
+		dust_com.c		
+			-dust_handle_notification() - new input function for transport mode (IMSG_SETTRANSPORTMODE), reset function changed to efm32_reset()
+			-dust_check_and_possibly_reset_mote() - reset function changed to efm32_reset()
+						
+		process.c / process.h (functions updatet to communicate with W29N01HV Nandflash)
+			-process_W29N01HV_hybrid_ringbuf_entries();
+			-process_config();
+			-process_send_data();
+			
+		flash.c / flash.h (functions updatet to communicate with W29N01HV Nandflash)
+			-flash_W29N01HV_block_to_use()
+			-flash_W29N01HV_write_page()
+			-flash_W29N01HV_safe_write_page()
+			-flash_W29N01HV_find_next_good_block()
+			-flash_W29N01HV_init()
+			
+		nandflash_H29N01HV.c / nandflash_H29N01HV.h (updatet copy of nandflash.c with the same function set for W29N01HV Nandflash)
+			-NANDFLASH_W29N01HV_AddressValid()
+			-NANDFLASH_W29N01HV_CopyPage()
+			-NANDFLASH_W29N01HV_DeviceInfo()
+			-NANDFLASH_W29N01HV_EccCorrect()
+			-NANDFLASH_W29N01HV_EraseBlock()
+			-NANDFLASH_W29N01HV_Init()
+			-NANDFLASH_W29N01HV_MarkBadBlock()
+			-NANDFLASH_W29N01HV_ReadPage()
+			-NANDFLASH_W29N01HV_ReadSpare()
+			-NANDFLASH_W29N01HV_WritePage()
+
+		rmad.c / rmad.h	(functions handeling AUX data moved)
+			-main()
+			
+		aux_data.c / aux_data.h (moved all functions related to aux data pachages from rmad.c to this new files)
+			-get_aux_and_report()
+			-read_single_aux_sample()
+			-read_scan_aux_sample()
+			-get_new_aux_sample()
+			-send_aux_data()
+			-convertToCelsius()
+
+
+
+	bugfixes:
+		- fix to hopefully remove indefinite reboot cycles. The temporary implementation uses NVIC_SystemReset() to exit the loop.	
+		
+	know issues:
+		- NANDFLASH_W29N01HV_Init() reports wrong manufacture and device code on first boot - error ignored
+		- process_send_data() does not return when HW=6, quick fix with NVIC_SystemReset() reboot of EFM32 implementet to continue testing
