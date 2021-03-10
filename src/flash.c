@@ -284,7 +284,7 @@ int flash_W29N01HV_safe_write_page(unsigned int ipage_in_block, const unsigned c
 			ipage_in_block = 0;
 			npages = FLASH_BLOCK_NPAGES;
 			start_new_block = true;
-			flash_find_next_good_block();
+			flash_W29N01HV_find_next_good_block();
 		}
 		else {
 			// Success:
@@ -314,6 +314,21 @@ int flash_find_next_good_block()
 	return gl_next_block_to_use;
 }
 
+int flash_W29N01HV_find_next_good_block()
+{
+	if (gl_next_block_to_use <= -1)
+		return gl_next_block_to_use; // All blocks are bad! We will not write to flash
+
+	const int check_block = gl_next_block_to_use = (gl_next_block_to_use + 1) % FLASH_W29N01HV_NBLOCKS;
+	while (gl_block_info[gl_next_block_to_use].status == BLOCK_BAD) {
+		gl_next_block_to_use = (gl_next_block_to_use + 1) % FLASH_W29N01HV_NBLOCKS;
+		if (gl_next_block_to_use == check_block) {
+			gl_next_block_to_use = -1; // All blocks are bad! We will not write to flash
+			break;
+		}
+	}
+	return gl_next_block_to_use;
+}
 
 // Run before writing to flash.
 // Will initialize FLASH, gl_block_info and gl_next_block_to_use,
@@ -459,7 +474,7 @@ int flash_W29N01HV_init()
 		//printf( "\nreadspare_error = %ld \n",readspare_error);
         /* Manufacturer puts bad-block info in byte 6 of the spare area */
         /* of the first page in each block.                             */
-        const bool is_bad = buffer[NAND_SPARE_BADBLOCK_POS] != 0xFF;
+        const bool is_bad = buffer[NAND_W29N01HV_SPARE_BADBLOCK_POS] != 0xFF;
         if (is_bad) {
         	gl_block_info[iblock].status = BLOCK_BAD;
 
@@ -513,7 +528,7 @@ int flash_W29N01HV_init()
 	}
 
     gl_next_block_to_use = (latest_used_block < 0) ? (FLASH_NBLOCKS - 1) : latest_used_block;
-    flash_find_next_good_block();
+    flash_W29N01HV_find_next_good_block();
 
     if(gl_debug_on_UART1)printf( "\nLatest Used ID = %ld\n",latest_used_id);
 

@@ -17,10 +17,10 @@ extern "C" {
 #define NAND_W29N01HV_SPARESIZE       64 /**< Spare area size of Winbond's W29N01HVDINA. */
 
 /* "Standard" byte positions in the spare area. */
-#define NAND_SPARE_BADBLOCK_POS    0 /**< Spare area position of bad-block marker. */
-#define NAND_SPARE_ECC0_POS        6 /**< Spare area position of ECC byte 0 (LSB). */
-#define NAND_SPARE_ECC1_POS        7 /**< Spare area position of ECC byte 1.       */
-#define NAND_SPARE_ECC2_POS        8 /**< Spare area position of ECC byte 2 (MSB). */
+#define NAND_W29N01HV_SPARE_BADBLOCK_POS    0 /**< Spare area position of bad-block marker. */
+#define NAND_W29N01HV_SPARE_ECC0_POS        6 /**< Spare area position of ECC byte 0 (LSB). */
+#define NAND_W29N01HV_SPARE_ECC1_POS        7 /**< Spare area position of ECC byte 1.       */
+#define NAND_W29N01HV_SPARE_ECC2_POS        8 /**< Spare area position of ECC byte 2 (MSB). */
 
 /** @brief NANDFLASH status enumerator. */
 typedef enum
@@ -50,6 +50,7 @@ typedef struct
   int      dmaCh;                           /**< The DMA channel used, -1 if DMA is not used. */
 } NANDFLASH_W29N01HV_Info_TypeDef;
 
+
 bool  NANDFLASH_W29N01HV_AddressValid(uint32_t addr);
 int   NANDFLASH_W29N01HV_CopyPage(uint32_t dstAddr, uint32_t srcAddr);
 NANDFLASH_W29N01HV_Info_TypeDef *
@@ -59,6 +60,7 @@ int   NANDFLASH_W29N01HV_EraseBlock(uint32_t address);
 int   NANDFLASH_W29N01HV_Init(int dmaCh);
 int   NANDFLASH_W29N01HV_MarkBadBlock(uint32_t address);
 int   NANDFLASH_W29N01HV_ReadPage(uint32_t address, uint8_t *buffer);
+int   NANDFLASH_W29N01HV_Hybrid_ReadPage(uint32_t address, uint8_t *buffer, uint32_t buffer_size);
 int   NANDFLASH_W29N01HV_ReadSpare(uint32_t address, uint8_t *buffer);
 int   NANDFLASH_W29N01HV_WritePage(uint32_t address, uint8_t *buffer);
 

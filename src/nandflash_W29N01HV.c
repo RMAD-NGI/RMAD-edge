@@ -169,7 +169,7 @@ bool NANDFLASH_W29N01HV_AddressValid(uint32_t address)
   if (flashInitialized)
   {
     if ((address >= flashInfo.baseAddress) &&
-        (address < (flashInfo.baseAddress + (2 * flashInfo.deviceSize))))  // lagt til *2 for å ta høyde for 12 adressering av 11 bits pages, ergo dobbelt så mang adresser som bytes
+        (address < (flashInfo.baseAddress + (2 * flashInfo.deviceSize))))  // byttet ut 2 med 4 for testing // lagt til *2 for å ta høyde for 12 adressering av 11 bits pages, ergo dobbelt så mang adresser som bytes
     {
       return true;
     }
@@ -549,11 +549,11 @@ int NANDFLASH_W29N01HV_ReadPage(uint32_t address, uint8_t *buffer)
 
   EBI_StartNandEccGen();
 
-  //printf( "NANDFLASH_ReadPage()-flashInfo.dmaCh = %ld \n",flashInfo.dmaCh);
 
   if (flashInfo.dmaCh == -1)
   {
 
+	//  printf("\nNANDFLASH_ReadPage() - flashInfo.dmaCh == -1");
     p = (uint32_t*) buffer;
     for (i = 0; i < flashInfo.pageSize / 4; i++)
     {
@@ -562,7 +562,7 @@ int NANDFLASH_W29N01HV_ReadPage(uint32_t address, uint8_t *buffer)
   }
   else
   {
-	//printf( "NANDFLASH_ReadPage()-buffer - %lx \n", buffer);
+	 // printf("\nNANDFLASH_ReadPage()- W29N01HV_dmaRead");
 	  W29N01HV_dmaRead(buffer, flashInfo.pageSize);
     // her stopper det
 
@@ -585,9 +585,99 @@ int NANDFLASH_W29N01HV_ReadPage(uint32_t address, uint8_t *buffer)
 
   W29N01HV_chipEnable(false);
 
-  readEcc  = flashInfo.spare[ NAND_SPARE_ECC0_POS ];
-  readEcc += flashInfo.spare[ NAND_SPARE_ECC1_POS ] << 8;
-  readEcc += flashInfo.spare[ NAND_SPARE_ECC2_POS ] << 16;
+  readEcc  = flashInfo.spare[ NAND_W29N01HV_SPARE_ECC0_POS ];
+  readEcc += flashInfo.spare[ NAND_W29N01HV_SPARE_ECC1_POS ] << 8;
+  readEcc += flashInfo.spare[ NAND_W29N01HV_SPARE_ECC2_POS ] << 16;
+
+  //printf( "NANDFLASH_ReadPage() - status - %ld \n", NANDFLASH_W29N01HV_EccCorrect(flashInfo.ecc, readEcc, buffer));
+
+  return NANDFLASH_W29N01HV_EccCorrect(flashInfo.ecc, readEcc, buffer);
+}
+
+
+int NANDFLASH_W29N01HV_Hybrid_ReadPage(uint32_t address, uint8_t *buffer, uint32_t buffer_size)
+{
+  uint32_t i, readEcc, *p;
+
+  //printf( "\nNANDFLASH_W29N01HV_ReadPage()- adress = %lx \n",address);
+
+  if (!flashInitialized)
+  {
+    EFM_ASSERT(false);
+    return NANDFLASH_W29N01HV_NOT_INITIALIZED;
+  }
+
+  address &= ~NAND_PAGEADDR_MASK;
+
+  if (!NANDFLASH_W29N01HV_AddressValid(address))
+  {
+    EFM_ASSERT(false);
+    return NANDFLASH_W29N01HV_INVALID_ADDRESS;
+  }
+  //printf( "NANDFLASH_ReadPage()-address = %lx \n",address);
+  //printf( "NANDFLASH_ReadPage()-address >> 8 = %lx \n",address >> 8);
+  //printf( "NANDFLASH_ReadPage()-address >> 12 = %lx \n",address >> 12);
+  //printf( "NANDFLASH_ReadPage()-address >> 20 = %lx \n",address >> 20);
+
+  W29N01HV_chipEnable(true);
+
+  NAND_CMD  = NAND_RDA_CMD;
+  NAND_ADDR = (uint8_t) address;
+  NAND_ADDR = (uint8_t)((address >> 8) & 0x0f);
+  NAND_ADDR = (uint8_t)(address >> 12);
+  NAND_ADDR = (uint8_t)(address >> 20);
+  NAND_CMD  = NAND_RDA2_CMD; // ?????
+
+  W29N01HV_waitReady();
+
+  EBI_StartNandEccGen();
+
+ //printf( "\nNANDFLASH_ReadPage()-flashInfo.pageSize = %ld",flashInfo.pageSize);
+ // printf( "\nNANDFLASH_ReadPage()-buffer_size = %ld",buffer_size);
+
+ // int flash_page_read_size = flashInfo.pageSize / 4; // setting the read page size equal to FLASH_PAGE_SIZ in order to test if if we are overwriting memory, causing process_W29N01HV_hybrid_send_data() to not return in hw6
+
+
+  //printf( "\nNANDFLASH_ReadPage()-flash_page_read_size = %ld",flash_page_read_size);
+
+  if (flashInfo.dmaCh == -1)
+  {
+
+	//  printf("\nNANDFLASH_ReadPage() - flashInfo.dmaCh == -1");
+    p = (uint32_t*) buffer;
+    for (i = 0; i < buffer_size / 4; i++)
+    {
+      *p++ = NAND_DATA32;
+    }
+  }
+  else
+  {
+	//  printf("\nNANDFLASH_ReadPage()- W29N01HV_dmaRead");
+	  W29N01HV_dmaRead(buffer, buffer_size);
+    // her stopper det
+
+  }
+
+  flashInfo.ecc = EBI_StopNandEccGen();
+
+  if (flashInfo.dmaCh == -1)
+  {
+    p = (uint32_t*) flashInfo.spare;
+    for (i = 0; i < flashInfo.spareSize / 4; i++)
+    {
+      *p++ = NAND_DATA32;
+    }
+  }
+  else
+  {
+	  W29N01HV_dmaRead(flashInfo.spare, flashInfo.spareSize);
+  }
+
+  W29N01HV_chipEnable(false);
+
+  readEcc  = flashInfo.spare[ NAND_W29N01HV_SPARE_ECC0_POS ];
+  readEcc += flashInfo.spare[ NAND_W29N01HV_SPARE_ECC1_POS ] << 8;
+  readEcc += flashInfo.spare[ NAND_W29N01HV_SPARE_ECC2_POS ] << 16;
 
   //printf( "NANDFLASH_ReadPage() - status - %ld \n", NANDFLASH_W29N01HV_EccCorrect(flashInfo.ecc, readEcc, buffer));
 

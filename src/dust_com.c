@@ -35,6 +35,8 @@ static bool gl_packet_ID = true;
 
 volatile bool gl_mote_online_check = false;
 
+volatile bool gl_comp_ref_64_ladder;
+
 
 // Most low-level: Sends data to mote, adds 0x7E (HLDC) before and after..
 void tx_to_mote(unsigned char tx_data[], long length)
@@ -544,20 +546,19 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 				switch (command) {
 
 					case IMSG_REBOOT:
-	                    if (payload_length == 0)
+	                    //if (payload_length == 0)
 	                    	if(gl_debug_on_UART1)printf("\nExternal hard reset requested");
         					//This function has been changed to perform an external reboot with hw4 and hw5
 	                    	external_hard_reset(); /*external hard reset*/
 						break;
 
                     case IMSG_CHECKSTATUS:
-                        if (payload_length == 0)
-
+                        //if (payload_length == 0)
                         	get_aux_and_report();
                         break;
 
 					case IMSG_GETPARS:
-					    if (payload_length == 0)
+					    //if (payload_length == 0)
 					        dust_tx_msg_data(OMSG_PARS, gl_adjustable_params, sizeof(adjustable_params_t));
 						break;
 
@@ -571,22 +572,23 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 						break;
 
 					case IMSG_STARTLOGGING:
-					    if (!logging_is_running() // Actually checked inside ACMP0_IRQHandler() also I guess
-					        && payload_length == 0)
+					    if (!logging_is_running() && payload_length == 0){// Actually checked inside ACMP0_IRQHandler() also I guess
+
+					        ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
+					        ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
 					        ACMP0_IRQHandler();
+					    }
+
 						break;
 
 					case IMSG_SENDDATA:
+
+						if(gl_debug_on_UART1)printf("\nDownloading of dataset requested\n");
+
                         if (!logging_is_running() // Don't run if logging is running, so we don't loose any AD interrupts due to serial IO.
 					        && payload_length == sizeof(data_desc_t)){
 
-
-                   			//if (HW_REVITION >= 6){
-                   				//process_W29N01HV_send_data(packet_with_meta);
-                   			int status = process_send_data(packet_with_meta);
-                    		//}else{
-                    		//	process_send_data(packet_with_meta);
-                    		//}
+                   			process_hybrid_send_data(packet_with_meta);
 
                         	if(gl_debug_on_UART1)printf("\nDownloading of dataset complete\n");
 
@@ -594,7 +596,7 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 					    break;
 
 					case IMSG_SETTRANSPORTMODE:
-					    if (payload_length == 0)
+					    //if (payload_length == 0)
 
 					    	if(gl_debug_on_UART1)printf("\n\nEntering transport mode, requires hard reset to recover");
 
@@ -614,9 +616,44 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 
 						break;
 
-					case IMSG_SETCHARGEMODE:
-					    if (payload_length == 0)
+					case IMSG_SETCHARGEMODE_SLOW:
+					    //if (payload_length == 0)
+
 					    	charge_mode(0);
+
+
+						break;
+
+					case IMSG_SETCHARGEMODE_FAST:
+						//if (payload_length == 0){
+
+							charge_mode(1);
+
+						break;
+
+					case IMSG_SETACOMPREF_DAC:
+											//if (payload_length == 0){
+
+							gl_comp_ref_64_ladder = false;
+							comp_config(gl_adjustable_params->comp_trig_levels, gl_adjustable_params->comp_pos_sels);
+
+							if(gl_debug_on_UART1)printf("\nSet DAC as trigg reference");
+
+						break;
+
+					case IMSG_SETACOMPREF_VDD:
+											//if (payload_length == 0){
+
+							gl_comp_ref_64_ladder = true;
+							comp_config(gl_adjustable_params->comp_trig_levels, gl_adjustable_params->comp_pos_sels);
+
+							trigg_ref_reset();
+			        		//DAC_Reset(DAC0);
+			        		//GPIO_PinModeSet(gpioPortB,12,gpioModeWiredAnd,0); //testing GPIO out as preamp ref during trigg
+
+			        		if(gl_debug_on_UART1)printf("\nSet VDD as trigg reference");
+
+
 						break;
 				}
 			}
@@ -750,7 +787,7 @@ void dust_tx_msg_data(const unsigned char msg_id, const unsigned char pack[], co
 //}
 
 
-void dust_tx_data (const unsigned char pack[], const unsigned char length)
+void dust_tx_data(const unsigned char pack[], const unsigned char length)
 {
 	//SegmentLCD_Symbol(1,1);
 
@@ -771,6 +808,8 @@ void dust_tx_data (const unsigned char pack[], const unsigned char length)
         // The packet length is handled by dust_send_request.
         buf[3] = gl_socket_id;
         dust_send_request(buf, ARRAY_LEN(buf)); /*send data*/
+
+        if(gl_debug_on_UART1)printf("\ndust_tx_data()");
 
         //SegmentLCD_Symbol(1,0);
     }

@@ -34,7 +34,10 @@ enum { // In, from PC to MCU
                                 // (needed for parameter to take effekt). In the mote is really down (not just the network),
                                 // this will in effect be a delay, and the backup radio will also in this case be "enabled".
     IMSG_SETTRANSPORTMODE = 12,  //sends the dust mote to sleep and enters a low power state. Requires hard reset to exit to resume normal opperation.
-    IMSG_SETCHARGEMODE = 13,  //sends the dust mote to sleep and enters a low power state. Requires hard reset to exit to resume normal opperation.
+    IMSG_SETCHARGEMODE_SLOW = 13,  //set the charge mode of hw6 to 50mA
+    IMSG_SETCHARGEMODE_FAST = 14,  //set the charge mode of hw6 to 500mA
+    IMSG_SETACOMPREF_DAC = 15,  //us the ADC output as trigg reference
+    IMSG_SETACOMPREF_VDD = 16,  //use scaled VDD as trigg reference to reduce power consumption
 };
 
 

@@ -73,7 +73,9 @@ event_t process_latest_flash_event();
 
 //void process_list_data();
 
-int process_send_data(const packet_with_meta_t *const packet_with_meta);
+//void process_old_send_data(const packet_with_meta_t *const packet_with_meta);
+
+void process_hybrid_send_data(const packet_with_meta_t *const packet_with_meta);
 
 void process_config();
 

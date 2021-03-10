@@ -20,6 +20,9 @@ volatile double gl_ad_scan_rate; // Per scan
 
 volatile bool charging_enable = true;
 
+volatile int fastcharge = 0;
+
+volatile bool gl_comp_ref_64_ladder;
 
 
 void GPIO_setup(void)
@@ -35,7 +38,8 @@ void GPIO_setup(void)
 
     	//GPIO_PinModeSet(gpioPortD,8,gpioModeWiredAnd,1); /*external hard reset     1=off 0=on*/
 
-    	GPIO_PinModeSet(gpioPortF,11,gpioModeWiredAnd,0); /*fast charge    1=on 0=off*/
+    	GPIO_PinModeSet(gpioPortF,11,gpioModeWiredAndPullUp,0); /*fast charge    1=on 0=off*/
+    	//charge_mode(0);
     }
 
 }
@@ -44,12 +48,16 @@ void charge_mode(charge_mode)
 {
 	if (charge_mode > 0)
 	{
-		GPIO_PinModeSet(gpioPortF,11,gpioModeWiredAnd,1); //fast charge 500mA
+		GPIO_PinModeSet(gpioPortF,11,gpioModeWiredAndPullUp,1); //fast charge 450mA
+		if(gl_debug_on_UART1)printf("\ncharge_mode() - fast charge enabled");
 
 	}else{
 
-		GPIO_PinModeSet(gpioPortF,11,gpioModeWiredAnd,0); //slow charge 50mA
+		GPIO_PinModeSet(gpioPortF,11,gpioModeWiredAndPullUp,0); //slow charge 85mA
+		if(gl_debug_on_UART1)printf("\ncharge_mode() - fast charge disabled");
 	}
+
+	fastcharge = charge_mode;
 
 }
 
@@ -83,17 +91,28 @@ void dust_mote_reset(void)
 void dust_mote_setup(void){
 
 
-	//DUST_SEND({0x01, 0x02, 0x00, 0x24, 0x01}); // set mode slave
-
-	//DUST_SEND({0x01, 0x02, 0x02, 0x02, 0xFF, 0xFF}); // set networkID = 1981
-
 	DUST_SEND({0x01, 0x02, 0x00, 0x24, 0x01}); // set autojoin
 
-    //DUST_SEND({0x01, 0x02, 0x02, 0x06, 0x18}); // Set joinDutyCycle to 10%
-    DUST_SEND({0x01, 0x02, 0x02, 0x06, 0xFF}); // Set joinDutyCycle to 100%
+	DUST_SEND({0x01, 0x02, 0x02, 0x06, 0xFF}); // Set joinDutyCycle to 100%
+
+	//if (HW_REVITION>= 6){
+
+			DUST_SEND({0x01, 0x02, 0x00, 0x03, 0xFF, 0xFF}); // set networkID = FFFF can join all networkIDs
+
+	//}
+
+
+	//if (SW_VERTION == 0){
+
+	//    	DUST_SEND({0x01, 0x02, 0x02, 0x06, 0xFF}); // Set joinDutyCycle to 100%
+
+	//}else{
+
+	//    	DUST_SEND({0x01, 0x02, 0x02, 0x06, 0x18}); // Set joinDutyCycle to 10%
+
+	//}
 
     wait(500);
-
 
 }
 
@@ -120,16 +139,17 @@ int AD_config(void)
 
 	/* Base the ADC configuration on the default setup. */
 
-	ADC_Init_TypeDef init;
+	ADC_Init_TypeDef ainit;
 	ADC_InitScan_TypeDef gInit;
 
 	/* Initialize timebases */
-	init.ovsRateSel = adcOvsRateSel512;
-	init.lpfMode = adcLPFilterBypass;
-	init.warmUpMode = adcWarmupKeepADCWarm;
-	init.prescale = 0;
-	init.timebase = ADC_TimebaseCalc(0);
-	init.tailgate = 0;
+	ainit.ovsRateSel = adcOvsRateSel512;  // På ett tidspungt halvert sampligraten seg, og som en quick fix endret vi denne parameteren til fra 1024 til 512
+	//ainit.ovsRateSel = adcOvsRateSel1024;
+	ainit.warmUpMode = adcWarmupKeepADCWarm;
+	ainit.prescale = 0;
+	ainit.timebase = ADC_TimebaseCalc(0);
+	ainit.tailgate = 0;
+	ainit.lpfMode = adcLPFilterBypass;
 
 	/* Set input for scan */
 	gInit.prsSel = 0;
@@ -144,16 +164,20 @@ int AD_config(void)
 	gInit.diff = false;
 	gInit.rep = true;
 
-	ADC_Init(ADC0, &init);
+	ADC_Init(ADC0, &ainit);
 	ADC_InitScan(ADC0, &gInit);
 
 
 	// Presumably correct, but what is the "+ 12"?
-	gl_ad_sampling_rate = (CMU_ClockFreqGet(cmuClock_ADC0)/(init.prescale+1)) / ((pow(2,gInit.acqTime) + 12) * pow(2,(init.ovsRateSel+1)));
-	gl_ad_scan_rate = (double)gl_ad_sampling_rate / CONFIG_AD_NCHANS;
-	//int samples_in_period = sampligrate * aqusition_period;
+	gl_ad_sampling_rate = (CMU_ClockFreqGet(cmuClock_ADC0)/(ainit.prescale+1)) / ((pow(2,gInit.acqTime) + 12) * pow(2,(ainit.ovsRateSel+1))); // (/2) enda en quick fiks som ikke er bra, det er åpenbart noe feil ved utregningen av samplingraten.
 
-	/*SegmentLCD_Number(sampligrate/4); only for debugging in this function, shall be removed*/
+	//if(gl_debug_on_UART1)printf("\nAD_config() - gl_ad_sampling_rate(sps*ch) = %d", gl_ad_sampling_rate);
+
+	gl_ad_sampling_rate = 854; //fixed sampligrate for two channel (RMAD-Railway), as the above calculation gives wrong results
+
+	//if(gl_debug_on_UART1)printf("\nAD_config() - gl_ad_sampling_rate(sps*ch) = %d", gl_ad_sampling_rate);
+
+	gl_ad_scan_rate = (double)gl_ad_sampling_rate / CONFIG_AD_NCHANS;
 
 	ADC_IntClear(ADC0, ADC_IF_SCAN);
 	ADC_IntEnable(ADC0, ADC_IF_SCAN);
@@ -166,15 +190,15 @@ int AD_config(void)
 void aux_sensor_config(const ADC_SingleInput_TypeDef channel)
 {
 
-  ADC_Init_TypeDef init;
+  ADC_Init_TypeDef dinit;
   ADC_InitSingle_TypeDef sInit;
 
-  init.warmUpMode = adcWarmupNormal;
-  init.ovsRateSel = adcOvsRateSel4096;
-  init.lpfMode = adcLPFilterBypass;
-  init.timebase = ADC_TimebaseCalc(0);
-  init.prescale = 0;
-  init.tailgate = 0;
+  dinit.warmUpMode = adcWarmupNormal;
+  dinit.ovsRateSel = adcOvsRateSel4096;
+  dinit.lpfMode = adcLPFilterBypass;
+  dinit.timebase = ADC_TimebaseCalc(0);
+  dinit.prescale = 0;
+  dinit.tailgate = 0;
 
   sInit.reference = adcRef2V5;
   sInit.resolution = adcResOVS;
@@ -183,7 +207,12 @@ void aux_sensor_config(const ADC_SingleInput_TypeDef channel)
   sInit.input = channel;
   sInit.diff = false;
 
-  ADC_Init(ADC0, &init);
+
+  sInit.rep = false;
+  sInit.prsSel = 0;
+  sInit.prsEnable = false;
+
+  ADC_Init(ADC0, &dinit);
   ADC_InitSingle(ADC0, &sInit);
 
   /* Setup interrupt generation on completed conversion. */
@@ -255,25 +284,41 @@ void preamp_set_status(const uint16_t *const preamp_status)
 int battery_charge_status(uint16_t battery_voltage, int16_t logger_temperature)
 {
 
-	//battery_voltage = (VBatt-0.69)*65536 / (3*2.5)
+	int batt_4_15 = 30234;  // values for HW_REVITION < 6
+	int batt_4_05 = 29360;
+	int batt_3_70 = 26301;
+	int batt_3_50 = 24554;
+
+	if (HW_REVITION>= 6)
+	        {
+
+				batt_4_15 = 30234;
+				batt_4_05 = 29360;
+				batt_3_70 = 26301 - 1750;
+				batt_3_50 = 24554 - 1750;  // 0.2V slack due to inaccuracies in measurment ?
+
+	}
+
+
+	if(gl_debug_on_UART1)printf("\nbattery_charge_status() - battery_voltage(bin) = %d", battery_voltage);
 
 	//lading av batteri med hysteresis
-	if (battery_voltage > 30234) // batterispenning høyere enn 4.15V
+	if (battery_voltage > batt_4_15) // batterispenning høyere enn 4.15V
 		{
-			if(gl_debug_on_UART1)if(gl_debug_on_UART1)printf("\nbattery_charge_status() - disable charging as voltage > 4.15V");
+			if(gl_debug_on_UART1)printf("\nbattery_charge_status() - disable charging as voltage > 4.15V");
 			charging_enable = false;
 		}
-	else if (battery_voltage < 29360) // batterispenning lavere enn 4.05V
+	else if (battery_voltage < batt_4_05) // batterispenning lavere enn 4.05V
 		{
-			if(gl_debug_on_UART1)if(gl_debug_on_UART1)printf("\nbattery_charge_status() - enable charging as voltage < 4.05V");
+			if(gl_debug_on_UART1)printf("\nbattery_charge_status() - enable charging as voltage < 4.05V");
 			charging_enable = true;
 		}
 
 	//mote og efm32 i deep sleep/em4 ved ekstrm lav spenning - hard reboot når batteri er OK
-	if (battery_voltage < 24554) // batterispenning lavere enn 3.5V - 24554
+	if (battery_voltage < batt_3_50) // batterispenning lavere enn 3.5V - 24554
 		{
 
-			if(gl_debug_on_UART1)if(gl_debug_on_UART1)printf("\nbattery_charge_status() - requesting sleep mode as battery voltage < 3.5V");
+			if(gl_debug_on_UART1)printf("\nbattery_charge_status() - requesting sleep mode as battery voltage < 3.5V");
 
 			gl_mote_sleep = true;
 
@@ -290,10 +335,10 @@ int battery_charge_status(uint16_t battery_voltage, int16_t logger_temperature)
 		    dust_close_any_sockets();
 
 		}
-	else if (gl_mote_sleep & battery_voltage > 26301) // batterispenning høyere enn 3.7V - 26301
+	else if (gl_mote_sleep & battery_voltage > batt_3_70) // batterispenning høyere enn 3.7V - 26301
 		{
 
-			if(gl_debug_on_UART1)if(gl_debug_on_UART1)printf("\nbattery_charge_status() - system reset as battery voltage > 3.7V");
+			if(gl_debug_on_UART1)printf("\nbattery_charge_status() - system reset as battery voltage > 3.7V");
 
 			if (HW_REVITION >= 6)
 			{
@@ -329,15 +374,16 @@ int battery_charge_status(uint16_t battery_voltage, int16_t logger_temperature)
 
 }
 
-void single_comp_config(ACMP_TypeDef *const acmp, const ACMP_Channel_TypeDef neg_sel, const ACMP_Channel_TypeDef pos_sel, const unsigned int gpio_pin)
+void single_comp_config(ACMP_TypeDef *const acmp, const ACMP_Channel_TypeDef neg_sel, const ACMP_Channel_TypeDef pos_sel, const unsigned int vddLevel)
 {
 	ACMP_Init_TypeDef acmpInit = ACMP_INIT_DEFAULT;
 
 	acmpInit.enable = true;
-	acmpInit.lowPowerReferenceEnabled = true;
+	acmpInit.lowPowerReferenceEnabled = false;
 	acmpInit.hysteresisLevel = acmpHysteresisLevel0;
 	acmpInit.warmTime = acmpWarmTime512;
 	acmpInit.interruptOnRisingEdge = true;
+	acmpInit.vddLevel = vddLevel;
 
 	//GPIO_PinModeSet(gpioPortE, gpio_pin,gpioModePushPull,1);
 	//ACMP_GPIOSetup(acmp,1,true,false);
@@ -353,29 +399,60 @@ void single_comp_config(ACMP_TypeDef *const acmp, const ACMP_Channel_TypeDef neg
 void comp_config(const uint32_t *const trig_levels, const ACMP_Channel_TypeDef *const pos_sels)
 {
 
+
+	if(gl_comp_ref_64_ladder){
+
+		single_comp_config(ACMP0, acmpChannelVDD, pos_sels[0], 1);
+
+	}else{
+
+		DAC_Init_TypeDef dacInit = DAC_INIT_DEFAULT;
+		DAC_InitChannel_TypeDef dchInit = DAC_INITCHANNEL_DEFAULT;
+
+		dacInit.reference = dacRef2V5;
+		dacInit.outMode = dacOutputPinADC;
+		dacInit.convMode = dacConvModeContinuous;
+
+		dchInit.enable = true;
+
+		DAC_Init(DAC0, &dacInit);
+		DAC_InitChannel(DAC0, &dchInit, 0);
+		DAC_InitChannel(DAC0, &dchInit, 1);
+
+		DAC0 -> CH0DATA = trig_levels[0];
+		DAC0 -> CH1DATA = 0;
+
+		//GPIO_PinModeSet(gpioPortB,12,gpioModePushPull,0);
+		//GPIO_PinModeSet(gpioPortB,12,gpioModeWiredAnd,0);
+		single_comp_config(ACMP0, acmpChannelDAC0Ch0, pos_sels[0], 1);
+		//single_comp_config(ACMP1, acmpChannelDAC0Ch0, pos_sels[1], 3);
+
+	}
+}
+
+void trigg_ref_set(const uint32_t value)
+{
+
 	DAC_Init_TypeDef dacInit = DAC_INIT_DEFAULT;
 	DAC_InitChannel_TypeDef dchInit = DAC_INITCHANNEL_DEFAULT;
 
 	dacInit.reference = dacRef2V5;
-	dacInit.outMode = dacOutputPinADC;
-	//dacInit.outMode = dacOutputADC;
+	dacInit.outMode = dacOutputPin;
 	dacInit.convMode = dacConvModeContinuous;
-
 	dchInit.enable = true;
 
 	DAC_Init(DAC0, &dacInit);
-    DAC_InitChannel(DAC0, &dchInit, 0);
-    DAC_InitChannel(DAC0, &dchInit, 1);
+	DAC_InitChannel(DAC0, &dchInit, 1);
 
-    DAC0 -> CH0DATA = trig_levels[0];
-    //DAC0 -> CH1DATA = trig_levels[1];
-    DAC0 -> CH1DATA = 0;
+	DAC0 -> CH1DATA = value;
 
-    //GPIO_PinModeSet(gpioPortB,12,gpioModePushPull,0);
-    //GPIO_PinModeSet(gpioPortB,12,gpioModeWiredAnd,0);
+}
 
-	single_comp_config(ACMP0, acmpChannelDAC0Ch0, pos_sels[0], 2);
-	//single_comp_config(ACMP1, acmpChannelDAC0Ch0, pos_sels[1], 3);
+void trigg_ref_reset(void){
+
+	//trigg_ref_set(0);
+	DAC_Reset(DAC0);
+	GPIO_PinModeSet(gpioPortB,12,gpioModeWiredAnd,0); //testing GPIO out as preamp ref during trigg
 }
 
 void uart0_config(void)

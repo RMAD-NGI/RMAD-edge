@@ -17,7 +17,9 @@
 // Not all of these defines are needed outside of flash.c, but let us keep them together.
 
 // Magic number showing we have a buffer entry
-#define FLASH_MAGIC_NUMBER 0.636535F // Must have "F" or "f" since flash_block_header_t uses float
+//#define FLASH_MAGIC_NUMBER 0.656535F // Must have "F" or "f" since flash_block_header_t uses float
+//#define FLASH_MAGIC_NUMBER 0.656735F // alternative number for testing Must have "F" or "f" since flash_block_header_t uses float
+#define FLASH_MAGIC_NUMBER 0.656935F // alternative number for testing Must have "F" or "f" since flash_block_header_t uses float
 
 // Algorithm-defined and helper defines and typedefs.
 #define FLASH_HEADER_PAGES 1 // Timestamp etc
@@ -34,7 +36,7 @@
 
 #define FLASH_PAGE_ADDR(ib, ip) (flash_info()->baseAddress+ ib*FLASH_BLOCK_SIZE + ip*FLASH_PAGE_SIZ)
 #define FLASH_BLOCK_NPAGES (FLASH_BLOCK_SIZE/FLASH_PAGE_SIZ)
-#define FLASH_NBLOCKS (FLASH_SIZ/FLASH_BLOCK_SIZE)
+#define FLASH_NBLOCKS (FLASH_SIZ/FLASH_BLOCK_SIZE)  // delt på to for testing
 
 // kode for W29N01HV
 

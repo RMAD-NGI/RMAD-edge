@@ -9,6 +9,7 @@
 
 #include "process.h"
 #include "em_adc.h"
+#include "em_gpio.h"
 
 #include "aux_data.h"
 #include "rmad.h"
@@ -18,6 +19,8 @@
 #include "process.h"
 
 volatile static int charging = 1;
+volatile int fastcharge;
+volatile bool gl_comp_ref_64_ladder;
 
 volatile static int num_aux_samples;
 
@@ -39,9 +42,17 @@ sample_t aux_sample[12];
 
 static int aux_ad_sampling_rate;
 
+static int trigg0_status = 0;
 static int trigg1_status = 0;
-static int trigg2_status = 0;
 
+static int aux_num_scan= 0;
+
+static double sum_a = 0.0, sum_sqr_a = 0.0, sum_offset_a = 0.0;
+static double sum_b = 0.0, sum_sqr_b = 0.0, sum_offset_b = 0.0;
+
+static scan_t aux_scan;
+static int aux_scan_sample_a[400];
+static int aux_scan_sample_b[400];
 
 
 void get_aux_and_report(void){  //starting point for generating aux_data packet
@@ -53,8 +64,8 @@ void get_aux_and_report(void){  //starting point for generating aux_data packet
 		//ADC_IntDisable(ADC0, ADC_IF_SINGLE);
 	    //ADC_Reset(ADC0);
 
-        trigg1_status = (ACMP0 -> STATUS) & 2;
-        trigg2_status = (ACMP0 -> STATUS) & 2;
+        trigg0_status = ((ACMP0 -> STATUS) & 2) > 0  ? 1 : 0;
+        trigg1_status = ((ACMP1 -> STATUS) & 2) > 0  ? 1 : 0;
 
 		gl_num_aux = 0;
 		//aux_sample[0] = 0;
@@ -97,45 +108,31 @@ void read_single_aux_sample(void){   // called from ADC interupt
 
 void read_scan_aux_sample(void){  // called from ADC interupt
 
-	//static int aux_num_sample = 0;
-	static int aux_num_scan= 0;
-
-	//static double sum_a=0;
-	//static double sum_b=0;
-
-	static double sum_a = 0.0, sum_sqr_a = 0.0, sum_offset_a = 0.0;
-	static double sum_b = 0.0, sum_sqr_b = 0.0, sum_offset_b = 0.0;
-
-	static scan_t aux_scan;
-	static int aux_scan_sample_a[400];
-	static int aux_scan_sample_b[400];
 
     const unsigned int ch = (ADC0 ->STATUS & 50331648) >> 24;// 2 bits, don't want to keep checking for overflow...
     sample_t sample = (sample_t)ADC_DataScanGet(ADC0);
     aux_scan[ch] = sample;
 
-    //++aux_num_sample;
-
-
     if (ch == CONFIG_AD_NCHANS-1) {
 
-    	aux_scan_sample_a[aux_num_scan] = aux_scan[0];
-    	sum_offset_a += aux_scan[0];
-    	aux_scan_sample_b[aux_num_scan] = aux_scan[1];
-    	sum_offset_b += aux_scan[1];
+    		aux_scan_sample_a[aux_num_scan] = aux_scan[0];
+    		sum_offset_a += aux_scan[0];
+    		aux_scan_sample_b[aux_num_scan] = aux_scan[1];
+    		sum_offset_b += aux_scan[1];
 
-		sum_a += aux_scan[0] - 0x7FFF;
-		sum_sqr_a += (aux_scan[0]- 0x7FFF) * (aux_scan[0] - 0x7FFF);
+    		sum_a += aux_scan[0] - 0x7FFF;
+    		sum_sqr_a += (aux_scan[0]- 0x7FFF) * (aux_scan[0] - 0x7FFF);
 
-		sum_b += aux_scan[1] - 0x7FFF;
-		sum_sqr_b += (aux_scan[1]- 0x7FFF) * (aux_scan[1] - 0x7FFF);
+    		sum_b += aux_scan[1] - 0x7FFF;
+			sum_sqr_b += (aux_scan[1]- 0x7FFF) * (aux_scan[1] - 0x7FFF);
+
 
     	++aux_num_scan;
 
     }
 
 
-    if (aux_num_scan == 400){
+    if (aux_num_scan == 400-1){
 
 	   	ADC_Reset(ADC0);
 
@@ -182,7 +179,7 @@ void read_scan_aux_sample(void){  // called from ADC interupt
 
 void get_new_aux_sample(void){  //called from main
 
-	//int sleep_mode_recording;
+	//if(gl_debug_on_UART1)printf("\nget_new_aux_sample() - gl_num_aux = %d", gl_num_aux);
 
 	if (gl_num_aux <= num_preamp_off){
 
@@ -191,7 +188,6 @@ void get_new_aux_sample(void){  //called from main
 
 		gl_aux_data_is_scan = false;
 
-		//sleep_mode_recording = 1;
 
 	} else if (gl_num_aux <= (num_preamp_off + num_system)){
 
@@ -201,23 +197,6 @@ void get_new_aux_sample(void){  //called from main
 
 		gl_aux_data_is_scan = false;
 
-		//sleep_mode_recording = 1;
-
-			if(gl_num_aux == num_preamp_off+1){
-
-			ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-			ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-
-			DAC0 -> CH0DATA = 2048 + gl_adjustable_params->comp_trig_levels[0];
-			DAC0 -> CH1DATA = 2048;
-			preamp_set_status(gl_adjustable_params->preamp_logging);
-
-		    ACMP_IntClear(ACMP0, ACMP_IF_EDGE); // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-		    ACMP_IntEnable(ACMP0, ACMP_IF_EDGE); // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-		    ACMP_IntClear(ACMP1, ACMP_IF_EDGE); // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-		    ACMP_IntEnable(ACMP1, ACMP_IF_EDGE); // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-
-		}
 
 	} else if (gl_num_aux <= (num_preamp_off + num_system + num_preamp_on)){
 
@@ -226,38 +205,73 @@ void get_new_aux_sample(void){  //called from main
 
 		    gl_aux_data_is_scan = false;
 
-		    //sleep_mode_recording = 1;
 
 	}else if (gl_num_aux == (num_preamp_off + num_system + num_preamp_on + 1)){
 
 			//ADC_Reset(ADC0);
 
-		    aux_ad_sampling_rate = AD_config();
+			ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
+			ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
+
+
+				if(gl_comp_ref_64_ladder){
+
+					int vdd_cmp = ceil(1.25 / ((aux_sample[4]*3*2.5/65536)/64)); // calculate 1,25 V on the 64 level VDD ladder
+
+					if(gl_debug_on_UART1)printf("\naux_data() - vdd_ladder_during_aux = %d", vdd_cmp);
+
+					single_comp_config(ACMP0, acmpChannelVDD, gl_adjustable_params->comp_pos_sels, vdd_cmp + 4);  //comparator negative input // +1 er for lite, +2 sannsynligvis OK, lagt inn +4 for å ha litt å gå på, slik at logger ikke trigger under aux
+					trigg_ref_set(2600);  //preamp offset
+
+				}else{
+
+					DAC0 -> CH0DATA = 2600 + gl_adjustable_params->comp_trig_levels[0]; //comparator negative input
+					DAC0 -> CH1DATA = 2600; //preamp offset
+
+				}
+
+				preamp_set_status(gl_adjustable_params->preamp_logging);
+
+				wait(20);
+
+				ACMP_IntClear(ACMP0, ACMP_IF_EDGE);
+				ACMP_IntEnable(ACMP0, ACMP_IF_EDGE);
+				ACMP_IntClear(ACMP1, ACMP_IF_EDGE);
+				ACMP_IntEnable(ACMP1, ACMP_IF_EDGE);
+
+
+			aux_ad_sampling_rate = AD_config();
 		    ADC_Start(ADC0, adcStartScan);
 
-			//aux_sensor_config_low(adc_ch_list_preamp_on[0]);
-			//ADC_Start(ADC0, adcStartSingle);
-
-		    //gl_sleep_mode_recording = 1;
-
 		    gl_aux_data_is_scan = true;
-
-		    //aux_num_sample = 0;
+		    gl_aux_data_recived = false;
 
 	} else {
 
 
-		ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-		ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
+		ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
+		ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
 
-		DAC0 -> CH1DATA = 0;
-		DAC0 -> CH0DATA = gl_adjustable_params->comp_trig_levels[0];
+		if(gl_comp_ref_64_ladder){
+
+			trigg_ref_reset(); //preamp offset
+			single_comp_config(ACMP0, acmpChannelVDD, gl_adjustable_params->comp_pos_sels, 1); //comparator negative input
+
+		}else{
+
+			DAC0 -> CH1DATA = 0;  //preamp offset
+			DAC0 -> CH0DATA = gl_adjustable_params->comp_trig_levels[0]; //comparator negative input
+
+		}
+
 		preamp_set_status(gl_adjustable_params->preamp_cmp_trigg);
 
-	    ACMP_IntClear(ACMP0, ACMP_IF_EDGE); // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-	    ACMP_IntEnable(ACMP0, ACMP_IF_EDGE); // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-	    ACMP_IntClear(ACMP1, ACMP_IF_EDGE); // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-	    ACMP_IntEnable(ACMP1, ACMP_IF_EDGE); // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
+		wait(30);
+
+	    ACMP_IntClear(ACMP0, ACMP_IF_EDGE);
+	    ACMP_IntEnable(ACMP0, ACMP_IF_EDGE);
+	    ACMP_IntClear(ACMP1, ACMP_IF_EDGE);
+	    ACMP_IntEnable(ACMP1, ACMP_IF_EDGE);
 
 	    send_aux_data();
 
@@ -268,11 +282,9 @@ void get_new_aux_sample(void){  //called from main
 
 	    gl_num_aux = 0;
 	    gl_sleep_mode_recording = 3;
-	    //sleep_mode_recording = 3;
 
 	}
 
-	//return sleep_mode_recording;
 }
 
 
@@ -328,9 +340,15 @@ void send_aux_data() {
         //int charging = 0; //!GPIO_PinInGet(gpioPortD, 8);
         //int connected = (gl_socket_id >= 0) ? 1 : 0;
 
-        int fastcharge = 0;
+        //int fastcharge = 0;
 
-        status.state = charging +  2*fastcharge + 2*trigg2_status + 4*trigg1_status;
+        int trigg_ref = gl_comp_ref_64_ladder ? 1 : 0;
+
+        //if(gl_debug_on_UART1)printf("\naux_data() - trigg0_status(bin) = %d", trigg0_status);
+        //if(gl_debug_on_UART1)printf("\naux_data() - trigg1_status(bin) = %d", trigg1_status);
+        //if(gl_debug_on_UART1)printf("\naux_data() - trigg_ref(bin) = %d", trigg_ref);
+
+        status.state = charging +  2*fastcharge + 4*trigg0_status + 8*trigg1_status + 16*trigg_ref;
 
         status.signed_number = 0;
 

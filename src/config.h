@@ -7,13 +7,18 @@
 extern volatile int gl_ad_sampling_rate; // Per sample, not scan
 extern volatile double gl_ad_scan_rate; // Per scan
 
-
+extern volatile int fastcharge; // Per scan
+extern volatile bool gl_comp_ref_64_ladder;
 
 int AD_config(void);
 
 void aux_sensor_config(const ADC_SingleInput_TypeDef);
 
 void comp_config(const uint32_t *const trig_levels, const ACMP_Channel_TypeDef *const pos_sel1);
+
+void trigg_ref_set(const uint32_t value);
+
+void trigg_ref_reset(void);
 
 void preamp_config(const uint16_t *const preamp_status);
 

@@ -186,6 +186,10 @@ volatile static int sleep_mode;
 volatile bool gl_mote_sleep = false;
 volatile bool gl_transport_mode = false;
 
+volatile bool gl_comp_ref_64_ladder = false;
+
+volatile int aux_iteration = 0;
+
 bool logging_is_running() {
     return gl_recording_running;
 }
@@ -268,12 +272,13 @@ if (gl_get_aux_data == true) {
 
         ADC_Reset(ADC0);
 
-        comp_config(gl_adjustable_params->comp_trig_levels, gl_adjustable_params->comp_pos_sels); //added for testing of preamp
+        comp_config(gl_adjustable_params->comp_trig_levels, gl_adjustable_params->comp_pos_sels);
 
-        //ACMP_IntClear(ACMP0, ACMP_IF_EDGE);
-        //ACMP_IntEnable(ACMP0, ACMP_IF_EDGE);
-        //ACMP_IntClear(ACMP1, ACMP_IF_EDGE);
-        //ACMP_IntEnable(ACMP1, ACMP_IF_EDGE);
+        if(gl_comp_ref_64_ladder){
+
+        	trigg_ref_reset();
+
+        }
 
         process_ringbuf_lock_traceset();
 
@@ -302,12 +307,24 @@ void ACMP0_IRQHandler(void) {
     // but we may also use it e.g. to check whether it is safe to reset the mote.
     // Kind of makes the disabling of ACMP0 at the bottom of this function unneccessary I guess (with slight rewrite of AD ISR), but the
     // code is there, and might be good for efficiency.
-    if (gl_recording_running)
-        return;
 
-   // dac_config(); //added for testing of preamp
+    if (gl_recording_running)return;
 
-    DAC0 -> CH1DATA = 2048;
+    ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
+    ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
+
+
+    if(gl_comp_ref_64_ladder){
+
+    	trigg_ref_set(2600);
+
+    }else{
+
+    	//DAC0 -> CH1DATA = 2048;
+    	DAC0 -> CH1DATA = 2600;
+
+    }
+
 
     preamp_set_status(gl_adjustable_params->preamp_logging);
 
@@ -326,16 +343,13 @@ void ACMP0_IRQHandler(void) {
     gl_ad_sampling_rate = AD_config();
 
     //wait(5);
-
+	if(gl_debug_on_UART1)printf("\nACMP0_IRQHandler() - ad_sampling_rate = %d", gl_ad_sampling_rate/CONFIG_AD_NCHANS);
 
     ADC_Start(ADC0, adcStartScan);
 
     gl_recording_start = true;
     gl_recording_running = true;
     gl_sleep_mode_recording = 1;
-
-    ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
-    ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
 
 }
 
@@ -603,8 +617,10 @@ void GPIO_EVEN_IRQHandler(void) {
 
         uart0_config();
         //uart1_config();
-        comp_config(gl_adjustable_params->comp_trig_levels,
-                     gl_adjustable_params->comp_pos_sels);
+
+        if(gl_comp_ref_64_ladder)trigg_ref_reset();
+
+        comp_config(gl_adjustable_params->comp_trig_levels,gl_adjustable_params->comp_pos_sels);
 
         //AD_config();
         rtc_config(); // Simply calls RTCDRV_Setup().
@@ -786,6 +802,16 @@ void GPIO_EVEN_IRQHandler(void) {
 
                 	get_aux_and_report();
                 	//gl_sleep_mode_recording = get_aux_and_report();
+
+                	//if(gl_debug_on_UART1)printf("\n\nmain() aux_send on interval, iteration = %d", aux_iteration);
+
+                	if(aux_iteration == 96){ // reduce joinDutyCycle after 24 timer from boot
+
+                		DUST_SEND({0x01, 0x02, 0x02, 0x06, 0x18}); // Set joinDutyCycle to 10%
+
+                	}
+
+                	aux_iteration++;
                 	secs_since_mote_report = 0;
 
                     //sleep_mode = MIN(gl_sleep_mode_recording, gl_sleep_mode_uart); // Maybe not necessary, but OK.

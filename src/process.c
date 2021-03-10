@@ -158,6 +158,11 @@ typedef struct __attribute__ ((__packed__)) {
     uint16_t min_samples[CONFIG_AD_NCHANS];
     float mean[CONFIG_AD_NCHANS];
 
+    uint32_t calc_timestamp_offset;
+    uint16_t prev_sps;
+    uint16_t flash_ID;
+    timestamp_t trigg_timestamp; // Timestamp of first sample in logging sequence
+
 } avalanche_warning_t;
 EFM32_PACK_END(); // Actually a no-op for GNU it seems
 
@@ -194,6 +199,7 @@ traceset_ringbuf_t gl_rrb = {0, 0, 0};
 
 // Latest run ID (attempted) written to flash.
 static uint16_t gl_latest_flash_id;
+static float gl_prev_sps = 427; //This is the calculated samplingrate for HW_CONFIGURATION 3. Need to change this for the other versions to make calc_timestamp and prev_sps for the first trigg after a reboot
 
 timestamp_t gl_timestamp;
 static timestamp_t gl_last_timestamp;
@@ -459,7 +465,15 @@ int process_ringbuf_entries()
                // memcpy(warning.shifts, shifts, sizeof(shifts));
 
                 const scan_ringbuf_t *rb = &gl_rrb.buf[gl_rrb.istart% FLASH_OUTER_BUFSIZE]; // Traceset we are processing
-                warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_ad_scan_rate); // Timestamp of first sample in interval
+                //warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_ad_scan_rate); // Timestamp of first sample in interval
+
+                warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_prev_sps); // Timestamp of first sample in interval using the calculatet scanrate from previous trigg
+
+                warning.trigg_timestamp = rb->start_time; // Timestamp of first sample in logging sequence
+                warning.calc_timestamp_offset = rb->istart; //gl_calc_offset;
+                warning.prev_sps = 100 * gl_prev_sps; //sender målt sps fra forrige trigg da dette er det beste estimatet vi har, og sannsynligvis mer enn bra nok
+                warning.flash_ID = rrb_istart % 65536;// må bruke denne istedet for gl_latest_flash_id for at første event_jbv skal få riktig ID;
+
 
                 // Setting gl_dont_wait_for_acks is done in main() when start_logging,
                 // and reset afterwards, but maybe a chance that we may get here before/after.
@@ -472,6 +486,7 @@ int process_ringbuf_entries()
 
                 gl_dont_wait_for_acks = prev_gl_dont_wait_for_acks;
             }
+
 
 
 			// Write to NAND FLASH.
@@ -987,7 +1002,15 @@ int process_W29N01HV_hybrid_ringbuf_entries()
                // memcpy(warning.shifts, shifts, sizeof(shifts));
 
                 const scan_ringbuf_t *rb = &gl_rrb.buf[gl_rrb.istart% FLASH_OUTER_BUFSIZE]; // Traceset we are processing
-                warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_ad_scan_rate); // Timestamp of first sample in interval
+
+                //warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_ad_scan_rate); // Timestamp of first sample in interval
+
+                warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_prev_sps); // Timestamp of first sample in interval using the calculatet scanrate from previous trigg
+
+                warning.trigg_timestamp = rb->start_time; // Timestamp of first sample in logging sequence
+                warning.calc_timestamp_offset = rb->istart; //gl_calc_offset;
+                warning.prev_sps = 100 * gl_prev_sps; //sender målt sps fra forrige trigg da dette er det beste estimatet vi har, og sannsynligvis mer enn bra nok
+                warning.flash_ID = rrb_istart % 65536;// må bruke denne istedet for gl_latest_flash_id for at første event_jbv skal få riktig ID;
 
                 // Setting gl_dont_wait_for_acks is done in main() when start_logging,
                 // and reset afterwards, but maybe a chance that we may get here before/after.
@@ -1029,7 +1052,7 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 					const bool start_of_new_block = nscans_since_traceset_start % FLASH_BLOCK_EFFECTIVE_NSCANS == 0;
 					const bool end_of_traceset = rb_locked && rb_num == num_scans && ipage == npages-1;
 
-					if(gl_debug_on_UART1)printf("\nWriting safely page %d, block %d, ID %d, seq_num %d, ", gl_next_page_in_block_to_use, flash_block_to_use(), traceset_id, block_seq_num_in_traceset);
+					if(gl_debug_on_UART1)printf("\nWriting safely W29N01HV page %d, block %d, ID %d, ", gl_next_page_in_block_to_use, flash_block_to_use(), traceset_id);
 
 					//printf("flash_W29N01HV_safe_write_page(%d, %d, %d) - %d, %d, %d\n", gl_next_page_in_block_to_use +1, buf + ipage * FLASH_PAGE_NSCANS, start_of_new_block);
 
@@ -1089,7 +1112,7 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 							if (nsteps_back == 0) {
 								// For the latest block we can use flash_safe_write_page() which provides
 								// protection against FLASH errors when used correctly.
-								if(gl_debug_on_UART1)printf("\nWriting safely header page %d, block %d, ID %d, seq_num %d, ", 0, flash_block_to_use(), traceset_id, seq_num);
+								if(gl_debug_on_UART1)printf("\nWriting safely W29N01HV headerpage, block %d, ID %d, ", flash_block_to_use(), traceset_id);
 								if (flash_W29N01HV_safe_write_page(0, &flash_block_header_buf, false) < 0) { // Write block header in page 0 of block.
 									break_ipage_loop = true;  // The FLASH is all bad, no need to continue writing
 									break;
@@ -1103,7 +1126,7 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 								// The only situation this happens is when all *data* pages in a block have already been successfully written,
 								// but the *header* page is attempted written delayed because of missing timestamp, and that write fails.
 								// We only lose that block of data.
-								if(gl_debug_on_UART1)printf("\nWriting unsafely header page %d, block %d, ID %d, seq_num %d\n", 0, iblock, traceset_id, seq_num);
+								if(gl_debug_on_UART1)printf("\nWriting unsafely W29N01HV header page %d, block %d, ID %d\n", 0, iblock, traceset_id);
 								flash_W29N01HV_write_page(iblock, 0, &flash_block_header_buf);
 							}
 
@@ -1118,7 +1141,7 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 
 					if (end_of_traceset || last_page_in_block_just_written) {
 						gl_next_page_in_block_to_use = 1; // Skip header page of new block for now
-						flash_find_next_good_block();
+						flash_W29N01HV_find_next_good_block();
 					}
 
 				} // for ipage
@@ -1325,13 +1348,15 @@ event_t process_latest_flash_event()
 	const uint32_t *const trig_levels_temp = gl_adjustable_params->comp_trig_levels;
 
 	float kiloseconds = 1000 * (gl_timestamp.secs - gl_last_timestamp.secs) + (gl_timestamp.microsecs - gl_last_timestamp.microsecs)/1000;
-	float samplingrate = (1000 * (gl_num_samples + trig_levels_temp[1])) / kiloseconds;
-	float samplingrate100 = 100 * samplingrate;
+	gl_prev_sps = (1000 * (gl_num_samples + trig_levels_temp[1])) / kiloseconds;
 
 	lastevent.latest_flash_id = gl_latest_flash_id;
 	lastevent.last_timestamp = gl_last_timestamp;
-	lastevent.sampling_rate = samplingrate100;
+	lastevent.sampling_rate = 100 * gl_prev_sps;
 	lastevent.num_samples = gl_num_samples;
+
+
+	//if(gl_debug_on_UART1)printf("\nprocess_latest_flash_event()");
 
 	return lastevent;
 }
@@ -1444,6 +1469,7 @@ unsigned char send_data(const unsigned int iscan_start, const unsigned int iscan
 {
     data_desc->iscan_start = iscan_start;
     data_desc->iscan_stop = iscan_end - 1;
+    data_desc->channels = pow(2,nchans)-1;
     const unsigned int size_data_desc = offsetof(data_desc_t, iscan_stop) + sizeof(data_desc->iscan_stop); // Make sure we don't include trailing padding, if any
     const unsigned int nbytes_data = (data != 0) ? (iscan_end - iscan_start)*nchans*sizeof(sample_t) : 0;
     unsigned char payload[size_data_desc + nbytes_data];
@@ -1478,9 +1504,203 @@ unsigned char send_data(const unsigned int iscan_start, const unsigned int iscan
  *
  * Uses functions from dust_com, and also accesses FLASH, so I guess it belongs reasonably in this file?
 */
-int process_send_data(const packet_with_meta_t *const packet_with_meta)
+
+/* void process_old_send_data(const packet_with_meta_t *const packet_with_meta)
+ {
+
+     const unsigned int page_nscans = FLASH_PAGE_SIZ / sizeof(scan_t); // Intentional integer division
+
+     unsigned char status = 0;
+
+     // memcpy instead of pointer cast, since alignment might matter
+     data_desc_t data_request;
+     memcpy(&data_request, packet_with_meta->packet + DUST_SENDTO_PREFIX_LEN + DUST_COMMAND_ID_LEN, sizeof(data_request));
+
+     data_desc_t data_desc = data_request;
+
+     if(gl_debug_on_UART1)printf("\n\nDownloading dataset:  %d", data_desc.id);
+
+     const int iblock_current = flash_block_to_use();
+     if (data_request.iscan_stop <= data_request.iscan_start || iblock_current < 0) {
+         dust_tx_msg_data(OMSG_DATA, &data_desc, sizeof(data_desc)); // No data
+         return; // User asked for no data, or no good blocks in FLASH
+     }
+
+     // Count number of channels requested:
+     unsigned int nchans = 0;
+     for (int k = 0; k < CONFIG_AD_NCHANS; ++k)
+         if ((data_request.channels & 1 << k) != 0)
+             ++nchans;
+
+     const unsigned int packet_data_nbytes = DUST_API_MAX_PAYLOAD_EXPERIENCED - DUST_SENDTO_PREFIX_LEN - DUST_COMMAND_ID_LEN - sizeof(data_desc_t);
+     const unsigned int packet_nscans = packet_data_nbytes / (sizeof(sample_t) * nchans); // Integer division intentional
+     sample_t data[packet_nscans][nchans]; // Array big enough to hold all scans for one full packet
+
+     flash_block_header_t block_header;
+     unsigned char page[FLASH_PAGE_SIZ], block_header_page[FLASH_PAGE_SIZ];
+     int iscan_page_start = data_request.iscan_start,
+         iscan_page_end = data_request.iscan_start; // No data in page. Start value of iscan_page_start might not matter.
+     int iscan_handled_end = data_request.iscan_start; // Handled scans, either copied to <data> or sent, including "holes". No scans handled so far, i. e. [iscan_start, iscan_start)
+     int data_end = 0; // Number of scans in <data>. Nothing, i. e. data[[0, 0), :] filled
+     int iblock; // The block we are currently using. Not to be confused with iblock_current, which is where the program will write next.
+
+
+
+     // Try to find start of requested run data
+     bool first_round = true;
+     for (iblock = iblock_current;
+          first_round || iblock != iblock_current;
+          iblock = (iblock + 1) % FLASH_NBLOCKS) {
+         const block_info_t *const bl = gl_block_info + iblock;
+         if (bl->status == BLOCK_USED && bl->id == data_request.id)
+             // Found first and only run in FLASH with requested ID.
+             break;
+         first_round = false;
+
+     }
+     if (iblock == iblock_current && !first_round) {
+         // Run not found
+         dust_tx_msg_data(OMSG_DATA, &data_desc, sizeof(data_desc)); // No data
+         return;
+     }
+
+     // At this point, iblock is the index of the first available block of the run.
+     // Set things up for proper initialization:
+     --iblock; // Will be increased again "immediately"
+     bool is_initialization = true;
+     unsigned int block_ndatapages_used = 0;
+     unsigned int ipage_in_block = block_ndatapages_used + 1; // Read block header before reading anything other
+
+     //dust_enable_backup_radio_if_necessary();
+     while (true) {
+
+         ///////////////////////////////////////////////
+         // Get data from FLASH if needed
+         bool confirmed_nothing_available = false;
+         if (iscan_handled_end >= iscan_page_end) { // > should not happen
+             // No more data available in read page (if any), read data from FLASH
+             assert(iscan_handled_end == iscan_page_end);
+
+             bool got_data = false;
+             while (true) {
+                 if (ipage_in_block <= block_ndatapages_used) { // If we used 5 pages, they are page 1-5 since page 0 is the block header
+                     if (NANDFLASH_ReadPage(FLASH_PAGE_ADDR(iblock, ipage_in_block), page) == NANDFLASH_STATUS_OK) {
+                         const int iscan_block_start = block_header.seq_num * FLASH_BLOCK_EFFECTIVE_NSCANS;
+                         iscan_page_start = iscan_block_start + (ipage_in_block-1)*page_nscans;
+                         iscan_page_end = EFM32_MIN(EFM32_MIN(iscan_block_start + block_header.num_scans, iscan_page_start + page_nscans),
+                                                    data_request.iscan_stop+1);
+                         ++ipage_in_block;
+                         got_data = true;
+                         break;
+                     }
+                     ++ipage_in_block;
+                 }
+                 if (ipage_in_block == block_ndatapages_used + 1) {  // hvis iscan_start > 64 så begynner denne algoritmen og returnere feil verdier. Regner med at dette henger sammen med at de første dataenen da ikke er fra iblock = 1
+                     // Find and read next acceptable block header, if any.
+                     bool read_ok;
+                     while (true)  {
+                         iblock = (iblock + 1) % FLASH_NBLOCKS;
+                         const block_info_t *bl;
+                         bl = gl_block_info + iblock;
+                         read_ok = false;
+                         if (!is_initialization && iblock == iblock_current
+                             || (bl->status != BLOCK_BAD
+                                 && (bl->status != BLOCK_USED
+                                     || bl->id != data_request.id
+                                     || (read_ok = NANDFLASH_ReadPage(FLASH_PAGE_ADDR(iblock, 0), block_header_page) == NANDFLASH_STATUS_OK))))
+                             break;
+                         is_initialization = false;
+                     };
+                     is_initialization = false;
+                     confirmed_nothing_available = !read_ok;
+                     if (confirmed_nothing_available)
+                         break;
+                     memcpy(&block_header, block_header_page, sizeof(block_header));
+                     block_ndatapages_used = ceil((float)block_header.num_scans/page_nscans);
+                     ipage_in_block = 1;
+                 }
+             }
+             assert(got_data ^ confirmed_nothing_available); // got_data xor nothing available
+         }
+
+         ///////////////////////////////////////////////
+         // Handle a few things we want to do:
+         WDOG_Feed(); // Messy, but could be necessary to put somewhere here, this seems like an OK place.
+
+         if (logging_is_running())
+             break; // Break early if we got a comparator trig and started logging.
+
+         if (gl_socket_id < 0) //Tester automatisk terminereing av overføring ved mote lost
+         	break;
+
+         //if (status != 0) //Tester automatisk terminereing av overføring ved not txDone
+         //	break;
+
+         ///////////////////////////////////////////////
+         // Copy data from page to data, send messages as needed.
+
+         // Handle missing data:
+         const unsigned int iscan_after_any_missing =
+                 confirmed_nothing_available
+                 ? data_request.iscan_stop+1
+                 : EFM32_MIN(data_request.iscan_stop+1, iscan_page_start);
+         const bool hole_or_similar = iscan_after_any_missing > iscan_handled_end;
+         const bool packet_full = data_end == packet_nscans;
+         if (hole_or_similar || packet_full) {
+             // Missing data (hole or before start/until end) or packet full, we have to send the existing data, if any,
+             // then if necessary send a packet documenting any missing data.
+             if (data_end > 0) {
+             	status = send_data(iscan_handled_end - data_end, iscan_handled_end, &data_desc, nchans, &data[0][0]);
+
+                 data_end = 0;
+             }
+             if (hole_or_similar) {
+             	status = send_data(iscan_handled_end, iscan_after_any_missing, &data_desc, nchans, 0);
+                 iscan_handled_end = iscan_after_any_missing;
+             }
+         }
+
+         if (!confirmed_nothing_available) {
+             // Following code to copy data uses memcpy() on each sample_t! This allows for varying size of sample_t.
+             // The code also supports selection of subset of channels.
+             // The code should be efficient enough. memcpy() might anyway be inlined.
+             const int nscans_to_copy = EFM32_MIN(packet_nscans - data_end, iscan_page_end - iscan_handled_end);
+             for (int isc = 0; isc < nscans_to_copy; ++isc) {
+                 int ich = 0;
+                 for (int ic = 0; ic < CONFIG_AD_NCHANS; ++ic)
+                     if ((data_request.channels & 1 << ic) != 0){
+
+                    	 if(gl_debug_on_UART1)printf("\ndata_end %d, isc %d, ich %d, ic %d, page %lx, iscan_handled_end %d, iscan_page_start %d , sizeof(scan_t) %d",data_end, isc, ich, ic, page, iscan_handled_end, iscan_page_start, sizeof(scan_t));
+
+                    	 if(gl_debug_on_UART1)printf("\nmemcpy of data");
+
+                         memcpy(&data[data_end+isc][ich++],
+                                page + (iscan_handled_end-iscan_page_start+isc)*sizeof(scan_t)+ic*sizeof(sample_t),
+                                sizeof(sample_t));
+
+                         if(gl_debug_on_UART1)printf(" - OK");
+
+                     }
+             }
+             //memcpy(data + data_end, page + iscan_handled_end - iscan_page_start, nscans_to_copy);
+             data_end += nscans_to_copy;
+             iscan_handled_end += nscans_to_copy;
+         }
+
+         if (iscan_handled_end == data_request.iscan_stop + 1) {
+             if (data_end > 0)
+             	status = send_data(iscan_handled_end - data_end, iscan_handled_end, &data_desc, nchans, &data[0][0]);
+             break; // Finished!
+         }
+     };
+     //dust_disable_backup_radio_if_necessary();
+
+ }*/
+
+void process_hybrid_send_data(const packet_with_meta_t *const packet_with_meta)
 {
 
+	uint32_t read_address;
 
     const unsigned int page_nscans = FLASH_PAGE_SIZ / sizeof(scan_t); // Intentional integer division
 
@@ -1497,26 +1717,48 @@ int process_send_data(const packet_with_meta_t *const packet_with_meta)
     const int iblock_current = flash_block_to_use();
     if (data_request.iscan_stop <= data_request.iscan_start || iblock_current < 0) {
         dust_tx_msg_data(OMSG_DATA, &data_desc, sizeof(data_desc)); // No data
-        return 0; // User asked for no data, or no good blocks in FLASH
+        return; // User asked for no data, or no good blocks in FLASH
     }
 
-    // Count number of channels requested:
-    unsigned int nchans = 0;
-    for (int k = 0; k < CONFIG_AD_NCHANS; ++k)
-        if ((data_request.channels & 1 << k) != 0)
-            ++nchans;
+     //Count number of channels requested:
+    //unsigned int nchans = 0;
+    //for (int k = 0; k < CONFIG_AD_NCHANS; ++k)
+    //    if ((data_request.channels & 1 << k) != 0)
+     //       ++nchans;
+
+    unsigned int nchans = CONFIG_AD_NCHANS; //channel bitmap in OMSG_DATA set by CONFIG_AD_NCHANS and not IMSG_SENDDATA. All channels always downloaded in sw7+
 
     const unsigned int packet_data_nbytes = DUST_API_MAX_PAYLOAD_EXPERIENCED - DUST_SENDTO_PREFIX_LEN - DUST_COMMAND_ID_LEN - sizeof(data_desc_t);
     const unsigned int packet_nscans = packet_data_nbytes / (sizeof(sample_t) * nchans); // Integer division intentional
     sample_t data[packet_nscans][nchans]; // Array big enough to hold all scans for one full packet
 
     flash_block_header_t block_header;
-    unsigned char page[FLASH_PAGE_SIZ], block_header_page[FLASH_PAGE_SIZ];
-    int iscan_page_start = data_request.iscan_start,
-        iscan_page_end = data_request.iscan_start; // No data in page. Start value of iscan_page_start might not matter.
+
+    int page_size, block_header_page_size;
+
+    if (HW_REVITION >= 6){
+
+    	page_size = FLASH_W29N01HV_PAGE_SIZ; //FLASH_PAGE_SIZ;
+    	block_header_page_size = FLASH_W29N01HV_PAGE_SIZ;
+    } else {
+    	page_size = FLASH_PAGE_SIZ;
+    	block_header_page_size = FLASH_PAGE_SIZ;
+    }
+
+    unsigned char page[page_size], block_header_page[block_header_page_size];
+
+    int iscan_page_start = data_request.iscan_start;
+    int iscan_page_end = data_request.iscan_start; // No data in page. Start value of iscan_page_start might not matter.
     int iscan_handled_end = data_request.iscan_start; // Handled scans, either copied to <data> or sent, including "holes". No scans handled so far, i. e. [iscan_start, iscan_start)
+    uint32_t iscan_request_stop = data_request.iscan_stop; //last sample requested from backen
     int data_end = 0; // Number of scans in <data>. Nothing, i. e. data[[0, 0), :] filled
     int iblock; // The block we are currently using. Not to be confused with iblock_current, which is where the program will write next.
+
+    //if(gl_debug_on_UART1)printf("\n\ndata_request.id %d\n", data_request.id);
+    //if(gl_debug_on_UART1)printf("\ndata_request.channels %d\n", data_request.channels);
+    if(gl_debug_on_UART1)printf("\ndata_request.iscan_start %lx, data_request.iscan_start %d", data_request.iscan_start,data_request.iscan_start);
+    if(gl_debug_on_UART1)printf("\ndata_request.iscan_stop %lx, data_request.iscan_stop %d\n", data_request.iscan_stop,data_request.iscan_stop);
+
 
     // Try to find start of requested run data
     bool first_round = true;
@@ -1533,7 +1775,7 @@ int process_send_data(const packet_with_meta_t *const packet_with_meta)
     if (iblock == iblock_current && !first_round) {
         // Run not found
         dust_tx_msg_data(OMSG_DATA, &data_desc, sizeof(data_desc)); // No data
-        return 0;
+        return;
     }
 
     // At this point, iblock is the index of the first available block of the run.
@@ -1542,6 +1784,9 @@ int process_send_data(const packet_with_meta_t *const packet_with_meta)
     bool is_initialization = true;
     unsigned int block_ndatapages_used = 0;
     unsigned int ipage_in_block = block_ndatapages_used + 1; // Read block header before reading anything other
+
+    ///testing
+    //iscan_handled_end = 0;
 
     //dust_enable_backup_radio_if_necessary();
     while (true) {
@@ -1556,34 +1801,47 @@ int process_send_data(const packet_with_meta_t *const packet_with_meta)
             bool got_data = false;
             while (true) {
                 if (ipage_in_block <= block_ndatapages_used) { // If we used 5 pages, they are page 1-5 since page 0 is the block header
+
+
                 	if (HW_REVITION >= 6)
                 	    {
 
-                			int read_status = NANDFLASH_W29N01HV_ReadPage(FLASH_W29N01HV_PAGE_ADDR(iblock, ipage_in_block), page);
+                			//int read_status = NANDFLASH_W29N01HV_ReadPage(FLASH_W29N01HV_PAGE_ADDR(iblock, ipage_in_block), page);
 
-                			if (read_status == NANDFLASH_W29N01HV_STATUS_OK) {
+                		read_address = FLASH_W29N01HV_PAGE_ADDR(iblock, ipage_in_block);
+                		if(gl_debug_on_UART1)printf("\nReading W29N01HV page %d, block %d, ID %d, address = %lx", ipage_in_block, iblock, data_desc.id, read_address);
+
+
+                			if (NANDFLASH_W29N01HV_Hybrid_ReadPage(read_address, page, sizeof(page)) == NANDFLASH_W29N01HV_STATUS_OK) {
                 			//if (1) {
+
+                				if(gl_debug_on_UART1)printf(" - OK\n");
+
                 		         const int iscan_block_start = block_header.seq_num * FLASH_BLOCK_EFFECTIVE_NSCANS; // should not be set to FLASH_W29N01HV_BLOCK_EFFECTIVE_NSCANS as this creates issus with start and stopp values
                 		         //if(gl_debug_on_UART1)printf("\niscan_block_start %d, block_header.seq_num %d, FLASH_W29N01HV_BLOCK_EFFECTIVE_NSCANS %d, FLASH_BLOCK_EFFECTIVE_NSCANS %d", iscan_block_start, block_header.seq_num, FLASH_W29N01HV_BLOCK_EFFECTIVE_NSCANS, FLASH_BLOCK_EFFECTIVE_NSCANS);
                 		         iscan_page_start = iscan_block_start + (ipage_in_block-1)*page_nscans;
-                		         iscan_page_end = EFM32_MIN(EFM32_MIN(iscan_block_start + block_header.num_scans, iscan_page_start + page_nscans),
-                		                                                   data_request.iscan_stop+1);
+                		         iscan_page_end = EFM32_MIN(EFM32_MIN(iscan_block_start + block_header.num_scans, iscan_page_start + page_nscans), iscan_request_stop+1);
 
                 		         //if(gl_debug_on_UART1)printf("\niscan_block_start %d, ipage_in_block %d, page_nscans %d", iscan_block_start, ipage_in_block,page_nscans);
-                		         if(gl_debug_on_UART1)printf("\nReading page %d of %d, in block %d", ipage_in_block, block_ndatapages_used,iblock);
+                		         //if(gl_debug_on_UART1)printf("\niscan_page_start %d, iscan_page_end %d", iscan_page_start, iscan_page_end);
+                		        // if(gl_debug_on_UART1)printf("\nReading W29N01HV page %d of %d, in block %d", ipage_in_block, block_ndatapages_used,iblock);
                 		         ++ipage_in_block;
                 		         got_data = true;
                 		         break;
                 		   }
 
                 	    }else{
+
+                	    	read_address = FLASH_PAGE_ADDR(iblock, ipage_in_block);
+                	    	if(gl_debug_on_UART1)printf("\nReading page %d, block %d, ID %d, address = %lx", ipage_in_block, iblock, data_desc.id, read_address);
+
+
                 	    	if (NANDFLASH_ReadPage(FLASH_PAGE_ADDR(iblock, ipage_in_block), page) == NANDFLASH_STATUS_OK) {
                 	    	     const int iscan_block_start = block_header.seq_num * FLASH_BLOCK_EFFECTIVE_NSCANS;
                 	    	     iscan_page_start = iscan_block_start + (ipage_in_block-1)*page_nscans;
-                	    	     iscan_page_end = EFM32_MIN(EFM32_MIN(iscan_block_start + block_header.num_scans, iscan_page_start + page_nscans),
-                	    	                                                   data_request.iscan_stop+1);
+                	    	     iscan_page_end = EFM32_MIN(EFM32_MIN(iscan_block_start + block_header.num_scans, iscan_page_start + page_nscans),iscan_request_stop+1);
 
-                	    	     if(gl_debug_on_UART1)printf("\nReading page %d of %d, in block %d", ipage_in_block, block_ndatapages_used,iblock);
+                	    	     //if(gl_debug_on_UART1)printf("\nReading page %d of %d, in block %d", ipage_in_block, block_ndatapages_used,iblock);
                 	    	     ++ipage_in_block;
                 	    	     got_data = true;
                 	    	     break;
@@ -1606,10 +1864,13 @@ int process_send_data(const packet_with_meta_t *const packet_with_meta)
                             bl = gl_block_info + iblock;
                             read_ok = false;
 
+                            read_address = FLASH_W29N01HV_PAGE_ADDR(iblock, 0);
 
-                            int read_status = NANDFLASH_W29N01HV_ReadPage(FLASH_W29N01HV_PAGE_ADDR(iblock, 0), block_header_page);
+                            int read_status = NANDFLASH_W29N01HV_Hybrid_ReadPage(read_address, block_header_page, sizeof(block_header_page));
+                            //int read_status = NANDFLASH_W29N01HV_ReadPage(read_address, block_header_page);
 
-                            if(gl_debug_on_UART1)printf("\nReading headerpage in block %d", iblock);
+                            if(gl_debug_on_UART1)printf("\nReading W29N01HV headerpage, block %d, ID %d, address = %lx", iblock, data_desc.id, read_address);
+
 
                             if (!is_initialization && iblock == iblock_current
                                 || (bl->status != BLOCK_BAD
@@ -1620,6 +1881,8 @@ int process_send_data(const packet_with_meta_t *const packet_with_meta)
                             	//if(gl_debug_on_UART1)printf("\nread_ok_A %d", read_ok);
                             	break;
                             }
+
+                            if(gl_debug_on_UART1)printf(" - OK\n");
                             //if(gl_debug_on_UART1)printf("\nread_ok_B %d", read_ok);
                             is_initialization = false;
                         };
@@ -1679,7 +1942,7 @@ int process_send_data(const packet_with_meta_t *const packet_with_meta)
         // Handle missing data:
 
         //if(gl_debug_on_UART1)printf("\nconfirmed_nothing_available %d, data_request.iscan_stop+1 %d, iscan_page_start %d", confirmed_nothing_available, data_request.iscan_stop+1, iscan_page_start);
-        const unsigned int iscan_after_any_missing = confirmed_nothing_available ? data_request.iscan_stop+1 : EFM32_MIN(data_request.iscan_stop+1, iscan_page_start);
+        const unsigned int iscan_after_any_missing = confirmed_nothing_available ? iscan_request_stop+1 : EFM32_MIN(iscan_request_stop+1, iscan_page_start);
 
         //if(gl_debug_on_UART1)printf("\niscan_after_any_missing %d, iscan_handled_end %d , data_end %d , packet_nscans %d",iscan_after_any_missing, iscan_handled_end, data_end, packet_nscans);
 
@@ -1708,22 +1971,42 @@ int process_send_data(const packet_with_meta_t *const packet_with_meta)
             // Following code to copy data uses memcpy() on each sample_t! This allows for varying size of sample_t.
             // The code also supports selection of subset of channels.
             // The code should be efficient enough. memcpy() might anyway be inlined.
+        	//if(gl_debug_on_UART1)printf("\n!confirmed_nothing_available");
             const int nscans_to_copy = EFM32_MIN(packet_nscans - data_end, iscan_page_end - iscan_handled_end);
+
+            //if(gl_debug_on_UART1)printf("\nnscans_to_copy %d",nscans_to_copy);
+            //if(gl_debug_on_UART1)printf("\nCONFIG_AD_NCHANS %d",CONFIG_AD_NCHANS);
+            //if(gl_debug_on_UART1)printf("\ndata_request.channels %d",data_request.channels);
+
             for (int isc = 0; isc < nscans_to_copy; ++isc) {
+            	//if(gl_debug_on_UART1)printf("\nisc= %d",isc);
                 int ich = 0;
-                for (int ic = 0; ic < CONFIG_AD_NCHANS; ++ic)
-                    if ((data_request.channels & 1 << ic) != 0)
-                        memcpy(&data[data_end+isc][ich++],
-                               page + (iscan_handled_end-iscan_page_start+isc)*sizeof(scan_t)+ic*sizeof(sample_t),
-                               sizeof(sample_t));
+                for (int ic = 0; ic < CONFIG_AD_NCHANS; ++ic){
+                	//if(gl_debug_on_UART1)printf("\nic= %d",ic);
+                    if ((data_request.channels & 1 << ic) != 0){
+
+                    	//if(gl_debug_on_UART1)printf("\ndata_end %d, isc %d, ich %d, ic %d, page %lx, iscan_handled_end %d, iscan_page_start %d",data_end, isc, ich, ic, page, iscan_handled_end, iscan_page_start);
+
+                    	//if(gl_debug_on_UART1)printf("\nmemcpy of data");
+
+                        memcpy(&data[data_end+isc][ich++], page + (iscan_handled_end-iscan_page_start+isc)*sizeof(scan_t)+ic*sizeof(sample_t), sizeof(sample_t));
+
+
+                        //if(gl_debug_on_UART1)printf(" - OK");
+                    }
+                }
             }
             //memcpy(data + data_end, page + iscan_handled_end - iscan_page_start, nscans_to_copy);
+            //if(gl_debug_on_UART1)printf("\n!confirmed_nothing_available -after loop");
             data_end += nscans_to_copy;
             iscan_handled_end += nscans_to_copy;
+
+            //if(gl_debug_on_UART1)printf("\ndata_end %d, iscan_handled_end %d ",data_end, iscan_handled_end);
+
         }
 
-        if (iscan_handled_end == data_request.iscan_stop + 1) {
-        	//if(gl_debug_on_UART1)printf("\nDownloading finished");
+        if (iscan_handled_end >= iscan_request_stop + 1) {
+        	if(gl_debug_on_UART1)printf("\nDownloading finished");
             if (data_end > 0){
             	status = send_data(iscan_handled_end - data_end, iscan_handled_end, &data_desc, nchans, &data[0][0]);
             	//if(gl_debug_on_UART1)printf("\nFinished - scan_start %d, scan_end %d",iscan_handled_end - data_end, iscan_handled_end);
@@ -1733,17 +2016,10 @@ int process_send_data(const packet_with_meta_t *const packet_with_meta)
             break; // Finished!
 
         }
-
+        //if(gl_debug_on_UART1)printf("\nloop");
     }
 
-
-
-    if (HW_REVITION >= 6){
-
-    	efm32_reset(); // a terrible hack to make stop a full halt at this point - need to find a propper solution
-
-    }
-    return 1;
+    return;
 }
 
 
