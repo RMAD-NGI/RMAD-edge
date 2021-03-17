@@ -90,14 +90,19 @@ void dust_mote_reset(void)
 
 void dust_mote_setup(void){
 
+	DUST_SEND({0x02, 0x04, 0x00, 0x0d}); // get mac adress
 
-	DUST_SEND({0x01, 0x02, 0x00, 0x24, 0x01}); // set autojoin
+	DUST_SEND({0x01, 0x05, 0x00, 0x24, 0x01}); // set autojoin
 
-	DUST_SEND({0x01, 0x02, 0x02, 0x06, 0xFF}); // Set joinDutyCycle to 100%
+	DUST_SEND({0x01, 0x05, 0x00, 0x06, 0xFF}); // Set joinDutyCycle to 100%
+
+	//DUST_SEND({0x02, 0x04, 0x00, 0x06}); // get joinDutyCycle%
 
 	//if (HW_REVITION>= 6){
 
-			DUST_SEND({0x01, 0x02, 0x00, 0x03, 0xFF, 0xFF}); // set networkID = FFFF can join all networkIDs
+			//DUST_SEND({0x01, 0x02, 0x00, 0x03, 0xFF, 0xFF}); // set networkID = FFFF can join all networkIDs
+
+			DUST_SEND({0x01, 0x06, 0x00, 0x03, 0x07, 0xBD}); // set networkID = 1981
 
 	//}
 
@@ -284,20 +289,20 @@ void preamp_set_status(const uint16_t *const preamp_status)
 int battery_charge_status(uint16_t battery_voltage, int16_t logger_temperature)
 {
 
-	int batt_4_15 = 30234;  // values for HW_REVITION < 6
+	int batt_4_15 = 30234;
 	int batt_4_05 = 29360;
-	int batt_3_70 = 26301;
-	int batt_3_50 = 24554;
+	int batt_3_70 = 26301 - 875;  // 3.6V appears to be a better value for recovery
+	int batt_3_50 = 24554; // 3.5V limit to enter deep sleep. Have experienced total discharge with limit set to 3.3V
 
-	if (HW_REVITION>= 6)
-	        {
+	//if (HW_REVITION>= 6)
+	//        {
 
-				batt_4_15 = 30234;
-				batt_4_05 = 29360;
-				batt_3_70 = 26301 - 1750;
-				batt_3_50 = 24554 - 1750;  // 0.2V slack due to inaccuracies in measurment ?
+	//			batt_4_15 = 30234;
+	//			batt_4_05 = 29360;
+	//			batt_3_70 = 26301 - 875;  // 3.6V appears to be a better value for recovery
+	//			batt_3_50 = 24554;  // 3.5V limit to enter deep sleep. Have experienced total discharge with limit set to 3.3V
 
-	}
+	//}
 
 
 	if(gl_debug_on_UART1)printf("\nbattery_charge_status() - battery_voltage(bin) = %d", battery_voltage);

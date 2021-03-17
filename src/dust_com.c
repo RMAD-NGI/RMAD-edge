@@ -430,9 +430,12 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 
 				case 0x0002: /*alarms opened or closed*/
 					if(gl_debug_on_UART1)printf("\nSmartMesh IP mote status - Alarm");
-					dust_close_any_sockets();
+
 					gl_mote_online_check = false;
-					// kommetert ut for testing av uansket loop dust_mote_reset(); //hard or soft reset of mote, dependent on HW_REVISION
+					dust_mote_reset(); //hard or soft reset of mote, dependent on HW_REVISION
+
+					dust_close_any_sockets();
+
 					break;
 
 				case 0x0004: /*utc time mapping changed*/
@@ -495,8 +498,23 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 					break;
 
 				case 0x0080: /*service allocation change*/
+
+					//dust_close_any_sockets();
+
+					//if (dust_open_sockets() < 0){
+
+					//	if(gl_debug_on_UART1)printf("\nSmartMesh IP mote status - Service allocation changed - no open sockets");
+
+
+
+					//	efm32_reset();
+
+					//} else {
+
 						if(gl_debug_on_UART1)printf("\nSmartMesh IP mote status - Service allocation changed");
-						gl_mote_online_check = true;
+
+					//}
+
 					break;
 
 				case 0x0100: /*mote started joining the network*/
@@ -793,26 +811,30 @@ void dust_tx_data(const unsigned char pack[], const unsigned char length)
 
 	//wait(200); /*a short delay between sending an ack and the next request. Probably not needed anymore */
 
+	if(gl_mote_online_check){
 
-	if (gl_socket_id >= 0) {
-	    // OBS Currently uses low priority!
-	    static const unsigned char sendto_template[] =
+
+		if (gl_socket_id >= 0) {
+	    	// OBS Currently uses low priority!
+	    	static const unsigned char sendto_template[] =
 	        {0x18, 0x00, 0x00, 0x00, 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,
 	         0xf0, 0xb8, 0x00, 0x00};
-        unsigned char buf[ARRAY_LEN(sendto_template)+2+length];
-        memcpy(buf, sendto_template, ARRAY_LEN(sendto_template));
-        buf[ARRAY_LEN(sendto_template)+0] = gl_packet_to_master_seq_num % 256;
-        buf[ARRAY_LEN(sendto_template)+1] = gl_packet_to_master_seq_num >> 8;
-        memcpy(buf+ARRAY_LEN(sendto_template)+2, pack, length);
-        // Fill in some of the "template" part.
-        // The packet length is handled by dust_send_request.
-        buf[3] = gl_socket_id;
-        dust_send_request(buf, ARRAY_LEN(buf)); /*send data*/
+        	unsigned char buf[ARRAY_LEN(sendto_template)+2+length];
+        	memcpy(buf, sendto_template, ARRAY_LEN(sendto_template));
+        	buf[ARRAY_LEN(sendto_template)+0] = gl_packet_to_master_seq_num % 256;
+        	buf[ARRAY_LEN(sendto_template)+1] = gl_packet_to_master_seq_num >> 8;
+        	memcpy(buf+ARRAY_LEN(sendto_template)+2, pack, length);
+        	// Fill in some of the "template" part.
+        	// The packet length is handled by dust_send_request.
+        	buf[3] = gl_socket_id;
+        	dust_send_request(buf, ARRAY_LEN(buf)); /*send data*/
 
-        if(gl_debug_on_UART1)printf("\ndust_tx_data()");
+        	if(gl_debug_on_UART1)printf("\ndust_tx_data()");
 
         //SegmentLCD_Symbol(1,0);
-    }
+    	}
+
+	}
 	//else {
 	    // Use backup radio:
 	    //dust_enable_backup_radio_if_necessary();

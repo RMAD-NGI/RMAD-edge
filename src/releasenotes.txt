@@ -7,6 +7,7 @@ New in RMAD-EDGE software version SW_VERTION: 7
 	-Fixed bug where process_send_data() did not return for HW=6.
 	-channels in OMSG_DATA caclulated from CONFIG_AD_NCHANS, channels in IMSG_SENDDATA ignored
 	-JoinDutyCyle sett to 100% for the first 24 hours after EFM32 boot/reboot.
+	-Prits hw, sw and mac on boot when debug=true.
 	
 	new and changed functions:
 	
@@ -23,9 +24,9 @@ New in RMAD-EDGE software version SW_VERTION: 7
 			-dust_mote_setup()
 		
 	know issues:
-		- Downloading raw_data with small subsets looks like it is working, but need more testing
+		- Communication between EFM32 and SmartmeshIP mote fails periodicaly, looks to be in combination with poor radiolink and heavy radio traffic - dust_mote_reset when reciveng alarm events added for testing
 		- ScanStart og ScanStop in IMSG_SENDDATA are apears to be convertet to sign integer before processing. Cannot use values higher the 0x7FFFFFFF (0xFFFFFF7F with little endian from backend)
-		- Reading/witing datasets with high adresses in W29N01HV need more testing
+		- Need to reevaluate deep sleep limit for battery voltage 3.3/3.5 seems to be a bit to low. Set to 3.5/3.6 for testing
 		- New flash in hw6 is only using 16MB of 128MB as the hybrid solution uses both page- and block- size equal to the old flash. Number of blocks in new flash is half of the old.
 
 

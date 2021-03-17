@@ -1983,7 +1983,7 @@ void process_hybrid_send_data(const packet_with_meta_t *const packet_with_meta)
                 int ich = 0;
                 for (int ic = 0; ic < CONFIG_AD_NCHANS; ++ic){
                 	//if(gl_debug_on_UART1)printf("\nic= %d",ic);
-                    if ((data_request.channels & 1 << ic) != 0){
+                    //if ((data_request.channels & 1 << ic) != 0){  // is this test nessisairy anymore when data_request.channels is replaced with CONFIG_AD_NCHANS? When downloading raw data with RMAD railway, and sensornum not set correcly, downloading gives inncorrect values
 
                     	//if(gl_debug_on_UART1)printf("\ndata_end %d, isc %d, ich %d, ic %d, page %lx, iscan_handled_end %d, iscan_page_start %d",data_end, isc, ich, ic, page, iscan_handled_end, iscan_page_start);
 
@@ -1993,7 +1993,7 @@ void process_hybrid_send_data(const packet_with_meta_t *const packet_with_meta)
 
 
                         //if(gl_debug_on_UART1)printf(" - OK");
-                    }
+                    //}
                 }
             }
             //memcpy(data + data_end, page + iscan_handled_end - iscan_page_start, nscans_to_copy);

@@ -480,10 +480,15 @@ void GPIO_EVEN_IRQHandler(void) {
             const int received_packet_id = (RX_packet[2] & 0x02) >> 1;
             const bool is_sync = (RX_packet[2] & 0x08) != 0;
             if (is_ack) {
-                //PRINTF("Received ack [%d,%d,%d]\n", RX_packet[0], RX_packet[1],
-                 //       RX_packet[2]);
+            	//if(gl_debug_on_UART1)printf("Received ack [%lx,%lx,%lx,%lx,%lx,%lx,%lx,%lx,%lx]\n", RX_packet[0], RX_packet[1],RX_packet[2], RX_packet[3], RX_packet[4],RX_packet[5], RX_packet[6], RX_packet[7], RX_packet[8]);
+
                 //ack_recived = true;
                 packet_register(RX_packet, RX_length);
+
+                //if(gl_debug_on_UART1)printf("Packet length: [%d]\n", RX_packet_length);
+
+                if(RX_packet_length>=13)if(RX_packet[4]==1 | RX_packet[4]==13)if(gl_debug_on_UART1)printf("Mac Address: 0%lx%lx0%lx0%lx0%lx%lx%lx%lx\n", RX_packet[5],RX_packet[6], RX_packet[7], RX_packet[8], RX_packet[9],RX_packet[10], RX_packet[11], RX_packet[12]);
+
             } else {
                 //PRINTF("Received notification [%d,%d,%d]\n", RX_packet[0],
                   //      RX_packet[1], RX_packet[2]);
@@ -587,7 +592,10 @@ void GPIO_EVEN_IRQHandler(void) {
 
             RETARGET_SerialInit();
             RETARGET_SerialCrLf(1);
-            printf("\n\n***RMAD-hw6 EFM32GG boot***\n");
+            printf("\n\n***RMAD-EDGE EFM32GG boot***\n");
+            printf("\nRMAD-Software version = %d", SW_VERTION);
+            printf("\nRMAD-Hardware revision = %d", HW_REVITION);
+            printf("\nRMAD-Configuration = %d\n", HW_CONFIGURATION);
 
         }
 

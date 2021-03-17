@@ -22,7 +22,7 @@
 //6 = intermediate test vertion for RMAD-EDGE
 //7 = first full release of RMAD-EDGE for HW_REVITION 4 to 6, HW_CONFIGURATION 3 and HW_RADIO 0
 
-#define HW_REVITION 5
+#define HW_REVITION 6
 
 //4 = white development board with EFM32 starter kit,
 //5 = red production board with EFM32 starter kit

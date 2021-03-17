@@ -59,7 +59,7 @@ void get_aux_and_report(void){  //starting point for generating aux_data packet
 
 	//int sleep_mode_recording;
 
-	if(gl_mote_online_check){
+	//if(gl_mote_online_check){  // den samme sjekken gjøres lengre ned i koden
 
 		//ADC_IntDisable(ADC0, ADC_IF_SINGLE);
 	    //ADC_Reset(ADC0);
@@ -85,7 +85,7 @@ void get_aux_and_report(void){  //starting point for generating aux_data packet
 
 	//	sleep_mode_recording = 3;
 
-	}
+	//}
 
 	//return sleep_mode_recording;
 }
@@ -366,10 +366,10 @@ void send_aux_data() {
         //status.ai15 = aux_sample[11];
 
 
-        if (gl_socket_id > 0)	//satt inn for og redusere trafikk mellom efm32 og dust when mote lost
-        {
+        //if (gl_socket_id > 0)	//satt inn for og redusere trafikk mellom efm32 og dust when mote lost - den samme sjekken gjøres lengre ned i koden
+        //{
         	dust_tx_msg_data(OMSG_AUX, &status, sizeof(status));
-        }
+        //}
 
         charging = battery_charge_status(status.vdd3, status.temperature); //statusbit endret til charge enable - PC7 - i hw4 og hw5 - flyttet hit for at sendt bit skal representere status ved avlesning av batterispenning
 
