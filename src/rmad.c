@@ -171,7 +171,7 @@ volatile static bool gl_event_recived = false;
 
 volatile static bool gl_recording_start = false;
 volatile bool gl_recording_stop = false;
-volatile static bool gl_recording_running = false;
+volatile bool gl_recording_running = false;
 
 volatile bool gl_wait_for_timestamp = false;
 
@@ -621,7 +621,7 @@ void GPIO_EVEN_IRQHandler(void) {
 
         GPIO_setup(); //setting up battery charge and external reset pint
 
-        //charge_mode(1);  //testing av hurtiglading, fjærnes når test er ferig
+        // charge_mode(1);  //testing av hurtiglading, fjærnes når test er ferig
 
         uart0_config();
         //uart1_config();

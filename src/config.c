@@ -19,6 +19,7 @@ volatile int gl_ad_sampling_rate;
 volatile double gl_ad_scan_rate; // Per scan
 
 volatile bool charging_enable = true;
+volatile bool prev_low_batt_volt =false;
 
 volatile int fastcharge = 0;
 
@@ -28,7 +29,7 @@ volatile bool gl_comp_ref_64_ladder;
 void GPIO_setup(void)
 {
 
-    GPIO_PinModeSet(gpioPortC,7,gpioModeWiredAnd,1); /*charge enable - mcp73811   1=on 0=off*/
+	GPIO_PinModeSet(gpioPortC,7,gpioModeWiredAnd,1); /*charge enable - mcp73811   1=on 0=off*/
 
     if (HW_REVITION >= 6)
     {
@@ -39,7 +40,12 @@ void GPIO_setup(void)
     	//GPIO_PinModeSet(gpioPortD,8,gpioModeWiredAnd,1); /*external hard reset     1=off 0=on*/
 
     	GPIO_PinModeSet(gpioPortF,11,gpioModeWiredAndPullUp,0); /*fast charge    1=on 0=off*/
+    	//GPIO_PinModeSet(gpioPortC,7,gpioModeWiredAndPullUp,1); /*charge enable - mcp73811   1=on 0=off*/
+
     	//charge_mode(0);
+    //} else{
+
+
     }
 
 }
@@ -289,7 +295,7 @@ void preamp_set_status(const uint16_t *const preamp_status)
 int battery_charge_status(uint16_t battery_voltage, int16_t logger_temperature)
 {
 
-	int batt_4_15 = 30234;
+	int batt_4_15 = 30234 + 436;  // fully charged at 4.2V
 	int batt_4_05 = 29360;
 	int batt_3_70 = 26301 - 875;  // 3.6V appears to be a better value for recovery
 	int batt_3_50 = 24554; // 3.5V limit to enter deep sleep. Have experienced total discharge with limit set to 3.3V
@@ -310,7 +316,7 @@ int battery_charge_status(uint16_t battery_voltage, int16_t logger_temperature)
 	//lading av batteri med hysteresis
 	if (battery_voltage > batt_4_15) // batterispenning høyere enn 4.15V
 		{
-			if(gl_debug_on_UART1)printf("\nbattery_charge_status() - disable charging as voltage > 4.15V");
+			if(gl_debug_on_UART1)printf("\nbattery_charge_status() - disable charging as voltage > 4.20V");
 			charging_enable = false;
 		}
 	else if (battery_voltage < batt_4_05) // batterispenning lavere enn 4.05V
@@ -323,25 +329,35 @@ int battery_charge_status(uint16_t battery_voltage, int16_t logger_temperature)
 	if (battery_voltage < batt_3_50) // batterispenning lavere enn 3.5V - 24554
 		{
 
-			if(gl_debug_on_UART1)printf("\nbattery_charge_status() - requesting sleep mode as battery voltage < 3.5V");
+			if(!prev_low_batt_volt){
 
-			gl_mote_sleep = true;
+				prev_low_batt_volt = true;
+				if(gl_debug_on_UART1)printf("\nbattery_charge_status() - low battery - requesting sleep mode on next iteration");
 
-			dust_mote_sleep();
+			}else{
 
-		    ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
-		    ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
-		    ACMP_Reset(ACMP0);
-		    DAC_Reset(DAC0);
-		    ADC_Reset(ADC0);
+				if(gl_debug_on_UART1)printf("\nbattery_charge_status() - requesting sleep mode as battery voltage < 3.50V");
 
-		    preamp_reset();
+				gl_mote_sleep = true;
 
-		    dust_close_any_sockets();
+				dust_mote_sleep();
+
+				ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
+				ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
+				ACMP_Reset(ACMP0);
+				DAC_Reset(DAC0);
+				ADC_Reset(ADC0);
+
+				preamp_reset();
+
+				dust_close_any_sockets();
+			}
 
 		}
 	else if (gl_mote_sleep & battery_voltage > batt_3_70) // batterispenning høyere enn 3.7V - 26301
 		{
+
+			prev_low_batt_volt =false;
 
 			if(gl_debug_on_UART1)printf("\nbattery_charge_status() - system reset as battery voltage > 3.7V");
 
@@ -355,14 +371,21 @@ int battery_charge_status(uint16_t battery_voltage, int16_t logger_temperature)
 			}
 
 		}
+	else {
+
+			prev_low_batt_volt =false;
+
+		}
 	//setter ladestatus pin
 	if (5000 < logger_temperature) //temperatur høyere enn 50 celsius
 		{
+
 			GPIO_PinModeSet(gpioPortC,7,gpioModeWiredAnd,0); /*charge enable - mcp73811   1=on 0=off*/
 			return 0;
 		}
-	else if (500 > logger_temperature)  //temperatur lavere enn 5 celcius
+	else if (1000 > logger_temperature)  //temperatur lavere enn 10 celcius
 		{
+
 			GPIO_PinModeSet(gpioPortC,7,gpioModeWiredAnd,0); /*charge enable - mcp73811   1=on 0=off*/
 			return 0;
 		}
@@ -512,9 +535,6 @@ void uart1_config(void)
     //GPIO_PinModeSet(gpioPortB,9,gpioModePushPull ,0); /*Tx*/
     //GPIO_PinModeSet(gpioPortB,10,gpioModeInput,1); /*Rx*/
 
-    //GPIO_PinModeSet(gpioPortC,7,gpioModeWiredAndPullUp,1); /*on/off/sleep/wake   1=sleep 0=wake*/
-
-    //GPIO_PinModeSet(gpioPortC,7,gpioModeWiredOrPullDown,0); /*on/off   1=on 0=off*/
 
     USART_InitAsync(UART1,&uartInit);
 

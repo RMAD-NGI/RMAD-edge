@@ -59,7 +59,7 @@ void get_aux_and_report(void){  //starting point for generating aux_data packet
 
 	//int sleep_mode_recording;
 
-	//if(gl_mote_online_check){  // den samme sjekken gjøres lengre ned i koden
+	if(gl_mote_online_check & !gl_recording_running){
 
 		//ADC_IntDisable(ADC0, ADC_IF_SINGLE);
 	    //ADC_Reset(ADC0);
@@ -70,7 +70,7 @@ void get_aux_and_report(void){  //starting point for generating aux_data packet
 		gl_num_aux = 0;
 		//aux_sample[0] = 0;
 
-	    aux_sensor_config(adcSingleInputCh7);  // dummy reading on solar channel channel, trown away as the first reading often fails.
+	    aux_sensor_config(adcSingleInputCh7);  // dummy reading on solar channel channel, thrown away as the first reading often fails.
 
 	    gl_get_aux_data = true;
 	    gl_sleep_mode_recording = 1;
@@ -85,7 +85,7 @@ void get_aux_and_report(void){  //starting point for generating aux_data packet
 
 	//	sleep_mode_recording = 3;
 
-	//}
+	}
 
 	//return sleep_mode_recording;
 }

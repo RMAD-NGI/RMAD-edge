@@ -47,6 +47,7 @@ extern volatile bool gl_aux_data_recived;
 extern volatile bool gl_aux_data_is_scan;
 
 extern volatile bool gl_mote_online_check;
+extern volatile bool gl_recording_running;
 
 extern volatile bool gl_mote_sleep; //mote has been sent to deep sleep due to low battery voltage
 extern volatile bool gl_transport_mode; //logger has been set to transport mode, requieres hard reset to exit
