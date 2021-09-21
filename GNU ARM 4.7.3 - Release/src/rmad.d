@@ -76,7 +76,7 @@ src/rmad.o: ../src/rmad.c \
  ../src/packet.h ../src/config.h ../src/flash.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/nandflash.h \
  ../src/nandflash_W29N01HV.h ../src/timestamp.h ../src/process.h \
- ../src/adjustable_params.h ../src/debug_printf.h ../src/rmad.h \
+ ../src/rmad.h ../src/adjustable_params.h ../src/debug_printf.h \
  ../src/aux_data.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/retargetserial.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/EFM32GG_STK3700/config/retargetserialconfig.h
@@ -247,11 +247,11 @@ C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/n
 
 ../src/process.h:
 
+../src/rmad.h:
+
 ../src/adjustable_params.h:
 
 ../src/debug_printf.h:
-
-../src/rmad.h:
 
 ../src/aux_data.h:
 

@@ -149,6 +149,7 @@
  * Secondly (less important) the ack-handling, including using information from an ack (socketID), hopefully will be cleaner.
  */
 
+
 volatile bool gl_debug_on_UART1 = true;
 
 // Prefix "gl_" => global
@@ -218,7 +219,7 @@ if (gl_get_aux_data == true) {
 
     if (gl_current_sample == 0) {
 
-    	if(gl_debug_on_UART1)printf("\n\nADC0_IRQHandler() scan started");
+    	//if(gl_debug_on_UART1)printf("\n\nADC0_IRQHandler() scan started");
 
         process_ringbuf_add(); // BEFORE GPIO_PinOutSet()!
         GPIO_PinOutSet(gpioPortA, 14); //clear nTime
@@ -226,20 +227,9 @@ if (gl_get_aux_data == true) {
         memset(scan, default_value, sizeof(scan));
     }
 
-//#if defined(DEBUG_AD_DATA) && !defined(NDEBUG)
- //   const int shift_per_chan = 2; // 2 samples
- //   if (gl_current_scan % 100 == 0)
-//        PRINTF("DEBUGGING USING FAKED DATA!!!!!!!!!!!\n");
-//    static unsigned int ch = -1;
-//    ch = (ch + 1) % CONFIG_AD_NCHANS;
- //   const sample_t sample = sin(gl_current_scan * 1.0 / shift_per_chan + ch)
-//            * (ch + 1) * 10;
-//#else
-    //const unsigned int ch = (ADC0 ->STATUS & 117440512) >> 24; // 3 bits, but for differential only lower 2 should be possibly non-zero
     const unsigned int ch = (ADC0 ->STATUS & 50331648) >> 24;// 2 bits, don't want to keep checking for overflow...
-    //assert(ch < CONFIG_AD_NCHANS);
+
     const sample_t sample = (sample_t)ADC_DataScanGet(ADC0);
-//#endif
 
     if (gl_num_sample_skip>0)
     {
@@ -336,7 +326,7 @@ void ACMP0_IRQHandler(void) {
     gl_num_aux = 0;
 
     const uint32_t *const trig_levels_temp = gl_adjustable_params->comp_trig_levels;
-    gl_num_sample_skip = trig_levels_temp[1]*CONFIG_AD_NCHANS;
+    gl_num_sample_skip = trig_levels_temp[1] * CONFIG_AD_NCHANS;
 
     // According to our experience, this is needed here, not just at start of program.
     // Maybe because calls to ADC_Init and ADC_InitScan are needed.
@@ -595,7 +585,7 @@ void GPIO_EVEN_IRQHandler(void) {
             printf("\n\n***RMAD-EDGE EFM32GG boot***\n");
             printf("\nRMAD-Software version = %d", SW_VERTION);
             printf("\nRMAD-Hardware revision = %d", HW_REVITION);
-            printf("\nRMAD-Configuration = %d\n", HW_CONFIGURATION);
+            printf("\nRMAD-Number of AD channels = %d\n", CONFIG_AD_NCHANS);
 
         }
 
@@ -715,7 +705,7 @@ void GPIO_EVEN_IRQHandler(void) {
                 if (gl_recording_start) {
 
                     gl_dont_wait_for_acks = true;
-                    dust_tx_msg_data(OMSG_LOGGINGSTARTED, "", 0);
+                    //dust_tx_msg_data(OMSG_LOGGINGSTARTED, "", 0);
                     gl_recording_start = false;
                 }
 

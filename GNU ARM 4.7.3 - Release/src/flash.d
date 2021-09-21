@@ -62,9 +62,7 @@ src/flash.o: ../src/flash.c \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_common.h \
  ../src/flash.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/nandflash.h \
- ../src/nandflash_W29N01HV.h ../src/rmad.h ../src/process.h \
- ../src/packet.h ../src/config.h \
- C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_acmp.h
+ ../src/nandflash_W29N01HV.h ../src/rmad.h
 
 C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/bsp/bsp.h:
 
@@ -195,11 +193,3 @@ C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/n
 ../src/nandflash_W29N01HV.h:
 
 ../src/rmad.h:
-
-../src/process.h:
-
-../src/packet.h:
-
-../src/config.h:
-
-C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_acmp.h:

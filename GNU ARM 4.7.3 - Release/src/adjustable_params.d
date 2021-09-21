@@ -61,7 +61,7 @@ src/adjustable_params.o: ../src/adjustable_params.c \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_acmp.h \
  ../src/adjustable_params.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_common.h \
- ../src/config.h
+ ../src/config.h ../src/rmad.h
 
 C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_system.h:
 
@@ -188,3 +188,5 @@ C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_acmp.h:
 C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_common.h:
 
 ../src/config.h:
+
+../src/rmad.h:

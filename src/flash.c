@@ -194,7 +194,7 @@ int flash_safe_write_page(unsigned int ipage_in_block, const unsigned char * con
 				if (is_written_to[ipage]) {
 					uint32_t addr = FLASH_PAGE_ADDR(gl_next_block_to_use, ipage);
 
-					if(gl_debug_on_UART1)printf( "address = %lx",addr);
+					//if(gl_debug_on_UART1)printf( "address = %lx",addr);
 
 					flash_error = NANDFLASH_WritePage(addr, block+ipage*FLASH_PAGE_SIZ) == NANDFLASH_WRITE_ERROR;
 					if (flash_error)
@@ -270,7 +270,7 @@ int flash_W29N01HV_safe_write_page(unsigned int ipage_in_block, const unsigned c
 					uint32_t addr = FLASH_W29N01HV_PAGE_ADDR(gl_next_block_to_use, ipage);
 					flash_error = NANDFLASH_W29N01HV_WritePage(addr, block+ipage*FLASH_PAGE_SIZ) == NANDFLASH_W29N01HV_WRITE_ERROR;
 
-					if(gl_debug_on_UART1)printf( "address = %lx",addr);
+					//if(gl_debug_on_UART1)printf( "address = %lx",addr);
 					//printf( "\nflash_write_error %ld\n\n", flash_error);
 
 					if (flash_error)

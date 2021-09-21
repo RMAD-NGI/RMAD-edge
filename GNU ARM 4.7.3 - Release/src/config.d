@@ -64,11 +64,7 @@ src/config.o: ../src/config.c \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_rtc.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_wdog.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/rtcdrv.h \
- ../src/config.h ../src/dust_com.h ../src/packet.h ../src/rmad.h \
- ../src/process.h \
- C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/nandflash.h \
- ../src/nandflash_W29N01HV.h ../src/timestamp.h \
- C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_common.h
+ ../src/config.h ../src/dust_com.h ../src/packet.h ../src/rmad.h
 
 C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_gpio.h:
 
@@ -207,13 +203,3 @@ C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/r
 ../src/packet.h:
 
 ../src/rmad.h:
-
-../src/process.h:
-
-C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/nandflash.h:
-
-../src/nandflash_W29N01HV.h:
-
-../src/timestamp.h:
-
-C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_common.h:

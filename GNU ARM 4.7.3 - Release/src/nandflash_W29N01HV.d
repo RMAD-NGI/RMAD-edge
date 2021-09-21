@@ -57,12 +57,7 @@ src/nandflash_W29N01HV.o: ../src/nandflash_W29N01HV.c \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_ebi.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_assert.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/dmactrl.h \
- ../src/nandflash_W29N01HV.h ../src/rmad.h ../src/process.h \
- C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/nandflash.h \
- ../src/packet.h ../src/timestamp.h \
- C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_common.h \
- ../src/config.h \
- C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_acmp.h
+ ../src/nandflash_W29N01HV.h ../src/rmad.h
 
 C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/Device/SiliconLabs/EFM32GG/Include/em_device.h:
 
@@ -183,17 +178,3 @@ C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/d
 ../src/nandflash_W29N01HV.h:
 
 ../src/rmad.h:
-
-../src/process.h:
-
-C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/nandflash.h:
-
-../src/packet.h:
-
-../src/timestamp.h:
-
-C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_common.h:
-
-../src/config.h:
-
-C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_acmp.h:

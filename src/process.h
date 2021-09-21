@@ -13,7 +13,9 @@
 #include "nandflash_W29N01HV.h"
 #include "packet.h"
 #include "timestamp.h"
+#include "rmad.h" // Get CONFIG_AD_NCHANS
 #include "config.h" // Get CONFIG_AD_NCHANS
+
 
 
 typedef uint16_t sample_t;

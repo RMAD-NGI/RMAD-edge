@@ -1,3 +1,35 @@
+New in RMAD-EDGE software version SW_VERTION: 8
+
+	new features:
+	
+	-Support for more than two channels
+	-OMSG_EVENT replaces OMSG_AVALANCHE and OMSG_AVALANCHE_JBV, calc_timstamp and reached_limit obmitted
+	-OMSG_LOGGINGSTARTED obmitted
+	-HW_COFIGURATION replaced by CONFIG_AD_NCHANS in rmad.h and aux_data
+	-Aux_data packet updated with sdv and mean for all channels included in CONFIG_AD_NCHANS
+	
+	new and changed functions:
+	
+		rmad.h
+			-main()
+			
+		aux_data.c
+			-send_aux_data()
+			
+		dust_com.h
+		
+		prosess.c
+			-process_ringbuf_entries()
+	
+	bugfixes:
+		-Reduced amount of debug outpud during trigg
+	
+	know issues:
+		-Only tested for CONFIG_AD_NCHANS = 2 and 4
+		_only one acmp activated independent of number of channels
+
+
+
 New in RMAD-EDGE software version SW_VERTION: 7
 
 	new features:

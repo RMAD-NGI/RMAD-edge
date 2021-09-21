@@ -18,6 +18,8 @@
 volatile int gl_ad_sampling_rate;
 volatile double gl_ad_scan_rate; // Per scan
 
+
+
 volatile bool charging_enable = true;
 volatile bool prev_low_batt_volt =false;
 
@@ -167,9 +169,13 @@ int AD_config(void)
 	gInit.prsEnable = false;
 	gInit.acqTime = adcAcqTime4;
 	gInit.reference = adcRef2V5;
+
 	// If changing the following, also change CONFIG_AD_NCHANS
-	gInit.input = ADC_SCANCTRL_INPUTMASK_CH0 + ADC_SCANCTRL_INPUTMASK_CH1;
-	//gInit.input = ADC_SCANCTRL_INPUTMASK_CH0 + ADC_SCANCTRL_INPUTMASK_CH1 + ADC_SCANCTRL_INPUTMASK_CH2 + ADC_SCANCTRL_INPUTMASK_CH3;
+	if(CONFIG_AD_NCHANS==1) gInit.input = ADC_SCANCTRL_INPUTMASK_CH0;
+	if(CONFIG_AD_NCHANS==2) gInit.input = ADC_SCANCTRL_INPUTMASK_CH0 + ADC_SCANCTRL_INPUTMASK_CH1;
+	if(CONFIG_AD_NCHANS==3) gInit.input = ADC_SCANCTRL_INPUTMASK_CH0 + ADC_SCANCTRL_INPUTMASK_CH1 + ADC_SCANCTRL_INPUTMASK_CH2;
+	if(CONFIG_AD_NCHANS==4) gInit.input = ADC_SCANCTRL_INPUTMASK_CH0 + ADC_SCANCTRL_INPUTMASK_CH1 + ADC_SCANCTRL_INPUTMASK_CH2 + ADC_SCANCTRL_INPUTMASK_CH3;
+
 	gInit.resolution = adcResOVS;
 	gInit.leftAdjust = 0;
 	gInit.diff = false;

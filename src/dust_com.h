@@ -6,9 +6,9 @@
 // "Commands/notifications" (messages) sent from or received in this program when communicating with controller (PC).
 // This will be the first byte in "user data".
 enum { // Out, from MCU to PC
-    OMSG_AVALANCHE      = 0, // Std dev >= limit. Payload: avalanche_warning_t
+    //OMSG_AVALANCHE      = 0, // Std dev >= limit. Payload: avalanche_warning_t
     //OMSG_SYSTEMSTATUS   = 1, // System status. PAYLOAD IS NOT FIXED. Payload: system_status_t
-    OMSG_LOGGINGSTARTED = 2, // Notification that logging has started. No payload.
+    //OMSG_LOGGINGSTARTED = 2, // Notification that logging has started. No payload.
     OMSG_LOGGINGSTOPPED = 3, // Notification that logging has stopped. Payload: uint16_t, which is
                              //   the "temporary ID" of the most recent run attempted written to FLASH.
     OMSG_PARS           = 4, // Copy of adjustable params in use. Payload: adjustable_params_t
@@ -16,7 +16,8 @@ enum { // Out, from MCU to PC
     OMSG_DATA           = 6, // Data belonging to a single "run" (COMP trig), split into packets as needed.
                              //   Payload: data_desc_t + either nothing or the data described by data_desc_t
     OMSG_AUX           	= 7, // AUX sensor data, to replace OMSG_SYSTEMSTATUS, PAYLOAD IS NOT FIXED. Payload: system_status_t
-    OMSG_AVALANCHE_JBV  = 8, // Std dev >= limit. Payload: avalanche_warning_t - samme som 1, men med forskjellig innhold. to sensorer og means
+    //OMSG_AVALANCHE_JBV  = 8, // Std dev >= limit. Payload: avalanche_warning_t - samme som 1, men med forskjellig innhold. to sensorer og means
+    OMSG_EVENT  		= 10, // Std dev >= limit. Payload: avalanche_warning_t - replacing OMSG_AVALANCHE and OMSG_AVALANCHE_JBV
 };
 enum { // In, from PC to MCU
     IMSG_REBOOT         = 0, // Command MCU to reboot. No payload.

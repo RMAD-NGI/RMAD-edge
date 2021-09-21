@@ -16,14 +16,15 @@
 #include "em_msc.h"
 #include "em_acmp.h"
 #include "adjustable_params.h"
+//#include "config.h"
 
 // The address where we keep the parameters (including Magic Number and filler), at the top of initial 1MB (NOR) FLASH.
 // Little point in "using" less than a page, since we anyway need to erase a full page.
 #define FLASH_ADDR (FLASH_SIZE - FLASH_PAGE_SIZE)
 
-//#define NORFLASH_MAGIC_NUMBER 0.11446F // Must have "F" or "f" since adjustable_params_ext_t uses float
-//#define NORFLASH_MAGIC_NUMBER 0.11646F // Must have "F" or "f" since adjustable_params_ext_t uses float - new hardware new number
-#define NORFLASH_MAGIC_NUMBER 0.11846F // Must have "F" or "f" since adjustable_params_ext_t uses float -
+#define NORFLASH_MAGIC_NUMBER 0.11446F // Must have "F" or "f" since adjustable_params_ext_t uses float
+//#define NORFLASH_MAGIC_NUMBER 0.11646F // Must have "F" or "f" since adjustable_params_ext_t uses float - used in sw7 config 1
+//#define NORFLASH_MAGIC_NUMBER 0.11846F // Must have "F" or "f" since adjustable_params_ext_t uses float - used in sw7 config 3
 
 EFM32_PACK_START(1); // Actually a no-op for GNU it seems, for GNU we use __attribute__ ((__packed__))
 // More info: See https://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html#Type-Attributes
@@ -46,12 +47,12 @@ static adjustable_params_ext_t gl_adjustable_params_ext = {
 		3000,
 		4000,
 		40000,
-		{50, 50, 4000, 4000},
-		{150, 150, 4000, 4000},
+		{50, 50, 50, 50},
+		{150, 150, 150, 150},
 		{60, 4},
 		{acmpChannel0, acmpChannel2},
 		1,
-		3,
+		15,
 	NORFLASH_MAGIC_NUMBER, // Don't change
 	// filler doesn't have to be initialized.
 };

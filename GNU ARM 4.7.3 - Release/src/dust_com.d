@@ -63,14 +63,14 @@ src/dust_com.o: ../src/dust_com.c \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_assert.h \
  ../src/ngi_rtcdrv.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_cmu.h \
- ../src/dust_com.h ../src/packet.h ../src/rmad.h ../src/process.h \
+ ../src/dust_com.h ../src/packet.h ../src/rmad.h ../src/fcs.h \
+ ../src/process.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/nandflash.h \
  ../src/nandflash_W29N01HV.h ../src/timestamp.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_common.h \
  ../src/config.h \
  C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_acmp.h \
- ../src/fcs.h ../src/flash.h ../src/adjustable_params.h \
- ../src/debug_printf.h
+ ../src/flash.h ../src/adjustable_params.h ../src/debug_printf.h
 
 C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_usart.h:
 
@@ -206,6 +206,8 @@ C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_cmu.h:
 
 ../src/rmad.h:
 
+../src/fcs.h:
+
 ../src/process.h:
 
 C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/kits/common/drivers/nandflash.h:
@@ -219,8 +221,6 @@ C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_common.h
 ../src/config.h:
 
 C:/SiliconLabs/SimplicityStudio/v3/developer/sdks/efm32/v2/emlib/inc/em_acmp.h:
-
-../src/fcs.h:
 
 ../src/flash.h:
 

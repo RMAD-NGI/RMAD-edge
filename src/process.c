@@ -146,22 +146,20 @@
 EFM32_PACK_START(1); // Actually a no-op for GNU it seems, for GNU we use __attribute__ ((__packed__))
 // More info: See https://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html#Type-Attributes
 typedef struct __attribute__ ((__packed__)) {
-    timestamp_t timestamp; // Timestamp of first sample in interval
-    unsigned char reached_limit;
-    float std_devs[CONFIG_AD_NCHANS];
 
-   // float shifts[CONFIG_AD_NCHANS*(CONFIG_AD_NCHANS-1)/2];
+	timestamp_t trigg_timestamp; // Timestamp of first sample in logging sequence
+	uint32_t calc_timestamp_offset;
+    uint16_t prev_sps;
+    uint16_t flash_ID;
+
+    float std_devs[CONFIG_AD_NCHANS];
+    float mean[CONFIG_AD_NCHANS];
 
     sample_t max[CONFIG_AD_NCHANS];
     sample_t min[CONFIG_AD_NCHANS];
     uint16_t max_samples[CONFIG_AD_NCHANS];
     uint16_t min_samples[CONFIG_AD_NCHANS];
-    float mean[CONFIG_AD_NCHANS];
 
-    uint32_t calc_timestamp_offset;
-    uint16_t prev_sps;
-    uint16_t flash_ID;
-    timestamp_t trigg_timestamp; // Timestamp of first sample in logging sequence
 
 } avalanche_warning_t;
 EFM32_PACK_END(); // Actually a no-op for GNU it seems
@@ -199,7 +197,7 @@ traceset_ringbuf_t gl_rrb = {0, 0, 0};
 
 // Latest run ID (attempted) written to flash.
 static uint16_t gl_latest_flash_id;
-static float gl_prev_sps = 427; //This is the calculated samplingrate for HW_CONFIGURATION 3. Need to change this for the other versions to make calc_timestamp and prev_sps for the first trigg after a reboot
+static float gl_prev_sps = 850 / CONFIG_AD_NCHANS;
 
 timestamp_t gl_timestamp;
 static timestamp_t gl_last_timestamp;
@@ -452,7 +450,7 @@ int process_ringbuf_entries()
 
             if (ret == 0 && reached_limit != 0) {
                 // Send message.
-                warning.reached_limit = reached_limit;
+               // warning.reached_limit = reached_limit;
                 memcpy(warning.std_devs, std_devs, sizeof(std_devs));
 
                 memcpy(warning.max, maxs, sizeof(maxs));
@@ -465,9 +463,9 @@ int process_ringbuf_entries()
                // memcpy(warning.shifts, shifts, sizeof(shifts));
 
                 const scan_ringbuf_t *rb = &gl_rrb.buf[gl_rrb.istart% FLASH_OUTER_BUFSIZE]; // Traceset we are processing
-                //warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_ad_scan_rate); // Timestamp of first sample in interval
 
-                warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_prev_sps); // Timestamp of first sample in interval using the calculatet scanrate from previous trigg
+
+             //   warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_prev_sps); // Timestamp of first sample in interval using the calculatet scanrate from previous trigg
 
                 warning.trigg_timestamp = rb->start_time; // Timestamp of first sample in logging sequence
                 warning.calc_timestamp_offset = rb->istart; //gl_calc_offset;
@@ -480,8 +478,9 @@ int process_ringbuf_entries()
                 const bool prev_gl_dont_wait_for_acks = gl_dont_wait_for_acks;
                 gl_dont_wait_for_acks = true; // Cannot afford to wait for very long, so we don't wait at all.
 
-                if (gl_socket_id >= 0)											//satt inn for og redusere trafikk mellom efm32 og dust when mote lost
-                	dust_tx_msg_data(OMSG_AVALANCHE_JBV, &warning, sizeof(warning));
+                //if (gl_socket_id >= 0){										//satt inn for og redusere trafikk mellom efm32 og dust when mote lost
+
+                 	dust_tx_msg_data(OMSG_EVENT, &warning, sizeof(warning));
 
 
                 gl_dont_wait_for_acks = prev_gl_dont_wait_for_acks;
@@ -503,7 +502,7 @@ int process_ringbuf_entries()
 					const bool start_of_new_block = nscans_since_traceset_start % FLASH_BLOCK_EFFECTIVE_NSCANS == 0;
 					const bool end_of_traceset = rb_locked && rb_num == num_scans && ipage == npages-1;
 
-					if(gl_debug_on_UART1)printf("\nWriting page %d, block %d, ID %d, seq_num %d, ", gl_next_page_in_block_to_use, flash_block_to_use(), traceset_id, block_seq_num_in_traceset);
+					//if(gl_debug_on_UART1)printf("\nWriting page %d, block %d, ID %d, seq_num %d, ", gl_next_page_in_block_to_use, flash_block_to_use(), traceset_id, block_seq_num_in_traceset);
 
 					if (flash_safe_write_page(gl_next_page_in_block_to_use++,buf + ipage * FLASH_PAGE_NSCANS, start_of_new_block)< 0){
 						break;
@@ -562,7 +561,7 @@ int process_ringbuf_entries()
 										if (nsteps_back == 0) {
 											// For the latest block we can use flash_safe_write_page() which provides
 											// protection against FLASH errors when used correctly.
-											if(gl_debug_on_UART1)printf("\nWriting header page %d, block %d, ID %d, seq_num %d, ", 0, flash_block_to_use(), traceset_id, seq_num);
+											//if(gl_debug_on_UART1)printf("\nWriting safely header page %d, block %d, ID %d, seq_num %d, ", 0, flash_block_to_use(), traceset_id, seq_num);
 											if (flash_safe_write_page(0, &flash_block_header_buf, false) < 0) { // Write block header in page 0 of block.
 												break_ipage_loop = true;  // The FLASH is all bad, no need to continue writing
 												break;
@@ -576,7 +575,7 @@ int process_ringbuf_entries()
 											// The only situation this happens is when all *data* pages in a block have already been successfully written,
 											// but the *header* page is attempted written delayed because of missing timestamp, and that write fails.
 											// We only lose that block of data.
-											if(gl_debug_on_UART1)printf("\nWriting unsafely header page %d, block %d, ID %d, seq_num %d, ", 0, iblock, traceset_id, seq_num);
+											//if(gl_debug_on_UART1)printf("\nWriting unsafely header page %d, block %d, ID %d, seq_num %d, ", 0, iblock, traceset_id, seq_num);
 											flash_write_page(iblock, 0, &flash_block_header_buf);
 										}
 
@@ -989,7 +988,7 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 
             if (ret == 0 && reached_limit != 0) {
                 // Send message.
-                warning.reached_limit = reached_limit;
+              //  warning.reached_limit = reached_limit;
                 memcpy(warning.std_devs, std_devs, sizeof(std_devs));
 
                 memcpy(warning.max, maxs, sizeof(maxs));
@@ -1005,7 +1004,7 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 
                 //warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_ad_scan_rate); // Timestamp of first sample in interval
 
-                warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_prev_sps); // Timestamp of first sample in interval using the calculatet scanrate from previous trigg
+               // warning.timestamp = TIMESTAMP_ADD_SECS(rb->start_time, rb->istart/gl_prev_sps); // Timestamp of first sample in interval using the calculatet scanrate from previous trigg
 
                 warning.trigg_timestamp = rb->start_time; // Timestamp of first sample in logging sequence
                 warning.calc_timestamp_offset = rb->istart; //gl_calc_offset;
@@ -1019,7 +1018,8 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 
                 //if (gl_socket_id >= 0)											//satt inn for og redusere trafikk mellom efm32 og dust when mote lost
 
-                dust_tx_msg_data(OMSG_AVALANCHE_JBV, &warning, sizeof(warning));
+                 dust_tx_msg_data(OMSG_EVENT, &warning, sizeof(warning));
+
 
                 //printf("\nOMSG_AVALANCHE_JBV sendt\n");
 
@@ -1052,7 +1052,7 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 					const bool start_of_new_block = nscans_since_traceset_start % FLASH_BLOCK_EFFECTIVE_NSCANS == 0;
 					const bool end_of_traceset = rb_locked && rb_num == num_scans && ipage == npages-1;
 
-					if(gl_debug_on_UART1)printf("\nWriting safely W29N01HV page %d, block %d, ID %d, ", gl_next_page_in_block_to_use, flash_block_to_use(), traceset_id);
+					//if(gl_debug_on_UART1)printf("\nWriting safely W29N01HV page %d, block %d, ID %d, ", gl_next_page_in_block_to_use, flash_block_to_use(), traceset_id);
 
 					//printf("flash_W29N01HV_safe_write_page(%d, %d, %d) - %d, %d, %d\n", gl_next_page_in_block_to_use +1, buf + ipage * FLASH_PAGE_NSCANS, start_of_new_block);
 
@@ -1112,7 +1112,7 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 							if (nsteps_back == 0) {
 								// For the latest block we can use flash_safe_write_page() which provides
 								// protection against FLASH errors when used correctly.
-								if(gl_debug_on_UART1)printf("\nWriting safely W29N01HV headerpage, block %d, ID %d, ", flash_block_to_use(), traceset_id);
+								//if(gl_debug_on_UART1)printf("\nWriting safely W29N01HV headerpage, block %d, ID %d, ", flash_block_to_use(), traceset_id);
 								if (flash_W29N01HV_safe_write_page(0, &flash_block_header_buf, false) < 0) { // Write block header in page 0 of block.
 									break_ipage_loop = true;  // The FLASH is all bad, no need to continue writing
 									break;
@@ -1126,7 +1126,7 @@ int process_W29N01HV_hybrid_ringbuf_entries()
 								// The only situation this happens is when all *data* pages in a block have already been successfully written,
 								// but the *header* page is attempted written delayed because of missing timestamp, and that write fails.
 								// We only lose that block of data.
-								if(gl_debug_on_UART1)printf("\nWriting unsafely W29N01HV header page %d, block %d, ID %d\n", 0, iblock, traceset_id);
+								//if(gl_debug_on_UART1)printf("\nWriting unsafely W29N01HV header page %d, block %d, ID %d\n", 0, iblock, traceset_id);
 								flash_W29N01HV_write_page(iblock, 0, &flash_block_header_buf);
 							}
 

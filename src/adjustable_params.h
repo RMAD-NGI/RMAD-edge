@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include "em_common.h"
 #include "config.h" // Get CONFIG_AD_NCHANS
+#include "rmad.h" // Get CONFIG_AD_NCHANS
 
 EFM32_PACK_START(1); // Actually a no-op for GNU it seems, for GNU we use __attribute__ ((__packed__))
 // More info: See https://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html#Type-Attributes

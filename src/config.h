@@ -3,11 +3,13 @@
 
 #include "em_acmp.h"
 
-#define CONFIG_AD_NCHANS 2
+
+
+
 extern volatile int gl_ad_sampling_rate; // Per sample, not scan
 extern volatile double gl_ad_scan_rate; // Per scan
 
-extern volatile int fastcharge; // Per scan
+extern volatile int fastcharge;
 extern volatile bool gl_comp_ref_64_ladder;
 
 int AD_config(void);

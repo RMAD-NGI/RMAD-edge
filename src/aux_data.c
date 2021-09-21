@@ -18,6 +18,9 @@
 #include "adjustable_params.h"
 #include "process.h"
 
+
+
+
 volatile static int charging = 1;
 volatile int fastcharge;
 volatile bool gl_comp_ref_64_ladder;
@@ -47,12 +50,21 @@ static int trigg1_status = 0;
 
 static int aux_num_scan= 0;
 
-static double sum_a = 0.0, sum_sqr_a = 0.0, sum_offset_a = 0.0;
-static double sum_b = 0.0, sum_sqr_b = 0.0, sum_offset_b = 0.0;
+//static int num_scan_samples = 800/CONFIG_AD_NCHANS;
+
+//static double sum_a = 0.0, sum_sqr_a = 0.0, sum_offset_a = 0.0;
+//static double sum_b = 0.0, sum_sqr_b = 0.0, sum_offset_b = 0.0;
+static double sum[800/CONFIG_AD_NCHANS], sum_sqr[800/CONFIG_AD_NCHANS], sum_offset[800/CONFIG_AD_NCHANS];
+
+//int sample_mean[CONFIG_AD_NCHANS];
+//float sdv[CONFIG_AD_NCHANS];
+
+sample_t mean_aux[CONFIG_AD_NCHANS];
+sample_t sdv_aux[CONFIG_AD_NCHANS];
 
 static scan_t aux_scan;
-static int aux_scan_sample_a[400];
-static int aux_scan_sample_b[400];
+//static int aux_scan_sample_a[400];
+//static int aux_scan_sample_b[400];
 
 
 void get_aux_and_report(void){  //starting point for generating aux_data packet
@@ -113,18 +125,30 @@ void read_scan_aux_sample(void){  // called from ADC interupt
     sample_t sample = (sample_t)ADC_DataScanGet(ADC0);
     aux_scan[ch] = sample;
 
+    sum_offset[ch] += sample;
+    sum[ch] += sample - 0x7FFF;
+    sum_sqr[ch] += (sample - 0x7FFF) * (sample - 0x7FFF);
+
     if (ch == CONFIG_AD_NCHANS-1) {
 
-    		aux_scan_sample_a[aux_num_scan] = aux_scan[0];
-    		sum_offset_a += aux_scan[0];
-    		aux_scan_sample_b[aux_num_scan] = aux_scan[1];
-    		sum_offset_b += aux_scan[1];
+    		//aux_scan_sample_a[aux_num_scan] = aux_scan[0];
+    	//	sum_offset_a += aux_scan[0];
+    		//aux_scan_sample_b[aux_num_scan] = aux_scan[1];
+    	//	sum_offset_b += aux_scan[1];
 
-    		sum_a += aux_scan[0] - 0x7FFF;
-    		sum_sqr_a += (aux_scan[0]- 0x7FFF) * (aux_scan[0] - 0x7FFF);
+    	//	sum_a += aux_scan[0] - 0x7FFF;
+    	//	sum_sqr_a += (aux_scan[0]- 0x7FFF) * (aux_scan[0] - 0x7FFF);
 
-    		sum_b += aux_scan[1] - 0x7FFF;
-			sum_sqr_b += (aux_scan[1]- 0x7FFF) * (aux_scan[1] - 0x7FFF);
+    	//	sum_b += aux_scan[1] - 0x7FFF;
+		//	sum_sqr_b += (aux_scan[1]- 0x7FFF) * (aux_scan[1] - 0x7FFF);
+
+			//for(int i=0;CONFIG_AD_NCHANS-1;i++){
+
+			//	sum_offset[i] += aux_scan[i];
+			//	sum[i] += aux_scan[i] - 0x7FFF;
+			//	sum_sqr[i] += (aux_scan[i]- 0x7FFF) * (aux_scan[i] - 0x7FFF);
+
+			//}
 
 
     	++aux_num_scan;
@@ -132,24 +156,41 @@ void read_scan_aux_sample(void){  // called from ADC interupt
     }
 
 
-    if (aux_num_scan == 400-1){
+    if (aux_num_scan == 800/CONFIG_AD_NCHANS-1){
 
 	   	ADC_Reset(ADC0);
 
-	   	int sample_mean_a = sum_offset_a / aux_num_scan;
-	   	int sample_mean_b = sum_offset_b / aux_num_scan;
+	   //	int sample_mean_a = sum_offset_a / aux_num_scan;
+	   //	int sample_mean_b = sum_offset_b / aux_num_scan;
 
-	   	float sdv_a = sqrt((sum_sqr_a - sum_a*sum_a/aux_num_scan) / (aux_num_scan - 1));
-	   	float sdv_b = sqrt((sum_sqr_b - sum_b*sum_b/aux_num_scan) / (aux_num_scan - 1));
+	   //	float sdv_a = sqrt((sum_sqr_a - sum_a*sum_a/aux_num_scan) / (aux_num_scan - 1));
+	   //	float sdv_b = sqrt((sum_sqr_b - sum_b*sum_b/aux_num_scan) / (aux_num_scan - 1));
+
+
+
+	   	for(int i=0; i < CONFIG_AD_NCHANS; i=i+1){
+
+	   		int mean = sum_offset[i] / aux_num_scan;
+	   		float sdv = sqrt((sum_sqr[i] - sum[i]*sum[i]/aux_num_scan) / (aux_num_scan - 1));
+
+	   		mean_aux[i] = mean;
+	   		sdv_aux[i] = sdv;
+
+	   		sum_offset[i] = 0;
+	   		sum[i] = 0;
+	   		sum_sqr[i] = 0;
+
+
+	   	}
 
 	    //aux_sample[num_preamp_off + num_system + num_preamp_on + 1] = aux_scan_sample_a[0];
 	   	//aux_sample[num_preamp_off + num_system + num_preamp_on + 2] = aux_scan_sample_b[0];
 
-	   	aux_sample[num_preamp_off + num_system + num_preamp_on + 1] = sample_mean_a;
-	   	aux_sample[num_preamp_off + num_system + num_preamp_on + 2] = sample_mean_b;
+	   //	aux_sample[num_preamp_off + num_system + num_preamp_on + 1] = sample_mean_a;
+	   //	aux_sample[num_preamp_off + num_system + num_preamp_on + 2] = sample_mean_b;
 
-	   	aux_sample[num_preamp_off + num_system + num_preamp_on + 3] = sdv_a;
-	   	aux_sample[num_preamp_off + num_system + num_preamp_on + 4] = sdv_b;
+	   //	aux_sample[num_preamp_off + num_system + num_preamp_on + 3] = sdv_a;
+	   //	aux_sample[num_preamp_off + num_system + num_preamp_on + 4] = sdv_b;
 
 	   	//aux_sample[num_preamp_off + num_system + num_preamp_on + 6] = std_deviance(aux_scan_sample_a, aux_num_scan, sample_mean_a);
 
@@ -160,13 +201,13 @@ void read_scan_aux_sample(void){  // called from ADC interupt
 
 	    //sum_a=0;
 	    //sum_b=0;
-	    sum_a = 0.0;
-	    sum_sqr_a = 0.0;
-	    sum_offset_a = 0.0;
+	  //  sum_a = 0.0;
+	  //  sum_sqr_a = 0.0;
+	  //  sum_offset_a = 0.0;
 
-	    sum_b = 0.0;
-	    sum_sqr_b = 0.0;
-	    sum_offset_b = 0.0;
+	  //  sum_b = 0.0;
+	  //  sum_sqr_b = 0.0;
+	  //  sum_offset_b = 0.0;
 
 
     }
@@ -306,17 +347,18 @@ void send_aux_data() {
             uint8_t signed_number;
 
             //uint16_t ai4;
-            uint16_t ai5;
-            uint16_t ai6;
+            uint16_t solar;
+            uint16_t ch0_triggoffset;
             //uint16_t ai7;
             //uint16_t ai8;
             //uint16_t ai9;
-            uint16_t ai10;
-            uint16_t ai11;
-            uint16_t ai12;
-            uint16_t ai13;
-            //uint16_t ai14;
-            //uint16_t ai15;
+            //uint16_t ai10;
+            //uint16_t ai11;
+            //uint16_t ai12;
+            //uint16_t ai13;
+            uint16_t mean[CONFIG_AD_NCHANS];
+            uint16_t sdv[CONFIG_AD_NCHANS];
+
 
 
 
@@ -328,7 +370,7 @@ void send_aux_data() {
 
         system_status_t status;
 
-        status.system =  HW_CONFIGURATION * 16 + SW_VERTION;
+        status.system =  CONFIG_AD_NCHANS * 16 + SW_VERTION;
         status.revition = HW_REVITION * 16 + HW_RADIO;
 
         //status.system = sw_vertion + hw_revision * 16;
@@ -353,17 +395,20 @@ void send_aux_data() {
         status.signed_number = 0;
 
         //status.ai4 = aux_sample[0];
-        status.ai5 = aux_sample[1];
-        status.ai6 = aux_sample[2];
+        status.solar = aux_sample[1];
+        status.ch0_triggoffset = aux_sample[2];
         //status.ai7 = aux_sample[3];
         //status.ai8 = 0; //aux_sample[4];
         //status.ai9 = 0; //aux_sample[5];
-        status.ai10 = aux_sample[5];
-        status.ai11 = aux_sample[6];
-        status.ai12 = aux_sample[7];
-        status.ai13 = aux_sample[8];
-        //status.ai14 = aux_sample[10];
-        //status.ai15 = aux_sample[11];
+        //status.ai10 = aux_sample[5];
+        //status.ai11 = aux_sample[6];
+        //status.ai12 = aux_sample[7];
+        //status.ai13 = aux_sample[8];
+        memcpy(status.mean, mean_aux, sizeof(mean_aux));
+        memcpy(status.sdv, sdv_aux, sizeof(sdv_aux));
+
+        //status.sdv = sdv_aux;
+        //status.mean = sample_mean_aux;
 
 
         //if (gl_socket_id > 0)	//satt inn for og redusere trafikk mellom efm32 og dust when mote lost - den samme sjekken gjøres lengre ned i koden

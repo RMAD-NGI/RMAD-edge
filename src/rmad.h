@@ -2,31 +2,27 @@
 #ifndef GEOPHONE_H_
 #define GEOPHONE_H_
 
-
-
-#include "process.h"
 #include <signal.h> // Get sig_atomic_t
 
-
-#define HW_CONFIGURATION 3
-
-//1 = 4 ch single ended 213Hz - geophones (not yet implmented)
-//2 = aux only - sensor node (not yet implmented)
-//3 = 2 ch single ended 427Hz - railway
-//4 = 2 ch differential 427Hz - infrasound (not yet implmented)
-
-#define SW_VERTION 7
+#define SW_VERTION 0
 
 //0 = reserved for development and debugging
 //5 = last offisal release for RMAD-railway and RMAD-geophone, RMAD-railway, RMAD-infrasound
 //6 = intermediate test vertion for RMAD-EDGE
-//7 = first full release of RMAD-EDGE for HW_REVITION 4 to 6, HW_CONFIGURATION 3 and HW_RADIO 0
+//7 = first full release of RMAD-EDGE for HW_REVITION 4 to 6, CONFIG_AD_NCHANS 2 and HW_RADIO 0
 
 #define HW_REVITION 6
 
 //4 = white development board with EFM32 starter kit,
 //5 = red production board with EFM32 starter kit
 //6 = black production board with EFM32 chip
+
+#define CONFIG_AD_NCHANS 4
+
+//#include "process.h"  //unshure if this need to be included. Generatet error when positioned before #define CONFIG_AD_NCHANS 2
+
+//4 = 4 ch single ended 213Hz - replaces "rmad-geophones"
+//2 = 2 ch single ended 425Hz - replaces "rmad-railway"
 
 #define HW_RADIO 0
 
