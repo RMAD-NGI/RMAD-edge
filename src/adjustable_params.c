@@ -11,20 +11,29 @@
 
 
 #include <assert.h>
+#include <math.h>
 #include "em_system.h" // Get FLASH_PAGE_SIZE and FLASH_SIZE
 #include "em_int.h"
 #include "em_msc.h"
 #include "em_acmp.h"
 #include "adjustable_params.h"
 //#include "config.h"
+#include "rmad.h"
+
+
+
 
 // The address where we keep the parameters (including Magic Number and filler), at the top of initial 1MB (NOR) FLASH.
 // Little point in "using" less than a page, since we anyway need to erase a full page.
 #define FLASH_ADDR (FLASH_SIZE - FLASH_PAGE_SIZE)
 
-#define NORFLASH_MAGIC_NUMBER 0.11446F // Must have "F" or "f" since adjustable_params_ext_t uses float
+
+
+
+//#define NORFLASH_MAGIC_NUMBER 0.11446F // Must have "F" or "f" since adjustable_params_ext_t uses float
 //#define NORFLASH_MAGIC_NUMBER 0.11646F // Must have "F" or "f" since adjustable_params_ext_t uses float - used in sw7 config 1
 //#define NORFLASH_MAGIC_NUMBER 0.11846F // Must have "F" or "f" since adjustable_params_ext_t uses float - used in sw7 config 3
+#define NORFLASH_MAGIC_NUMBER 0.11246F // Must have "F" or "f" since adjustable_params_ext_t uses float - used in sw8
 
 EFM32_PACK_START(1); // Actually a no-op for GNU it seems, for GNU we use __attribute__ ((__packed__))
 // More info: See https://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html#Type-Attributes
@@ -37,6 +46,7 @@ typedef struct __attribute__ ((__packed__)) {
 			                 : (4 - (sizeof(adjustable_params_t) + sizeof(float)) % 4)];
 } adjustable_params_ext_t;
 EFM32_PACK_END(); // Actually a no-op for GNU it seems
+
 
 
 // Master copy of values, including magic and filler.
@@ -52,7 +62,7 @@ static adjustable_params_ext_t gl_adjustable_params_ext = {
 		{60, 4},
 		{acmpChannel0, acmpChannel2},
 		1,
-		15,
+		3,
 	NORFLASH_MAGIC_NUMBER, // Don't change
 	// filler doesn't have to be initialized.
 };
@@ -79,7 +89,25 @@ int adjustable_params_init()
 
 	if (gl_flash_adjustable_params_ext->magic_number != NORFLASH_MAGIC_NUMBER) {
 		// Uninitialized NAND FLASH.
-       return adjustable_params_set(&gl_adjustable_params_ext.params);
+
+		int num_logging = pow(2,CONFIG_AD_NCHANS)-1;
+
+		adjustable_params_ext_t initial_adjustable_params_ext = {
+				3000,
+				4000,
+				40000,
+				{50, 50, 50, 50},
+				{150, 150, 150, 150},
+				{60, 4},
+				{acmpChannel0, acmpChannel2},
+				1,
+				pow(2,CONFIG_AD_NCHANS)-1,
+			NORFLASH_MAGIC_NUMBER, // Don't change
+			// filler doesn't have to be initialized.
+		};
+
+
+       return adjustable_params_set(&initial_adjustable_params_ext.params);
 	}
 	else {
 		gl_adjustable_params_ext.params = *gl_flash_adjustable_params;

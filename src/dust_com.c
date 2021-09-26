@@ -424,7 +424,7 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 
 					ADC_Reset(ADC0);
 			        ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-			        ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
+			        if(CONFIG_AD_NCHANS>=3) ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
 
 					break;
 
@@ -458,7 +458,7 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 
 				    ADC_Reset(ADC0);
 			        ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-			        ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
+			        if(CONFIG_AD_NCHANS>=3) ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
 
 					break;
 
@@ -525,7 +525,7 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 
 						ADC_Reset(ADC0);
 				        ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
-				        ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
+				        if(CONFIG_AD_NCHANS>=3) ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);  // lagt til for å test om rebootloopen skyldes trigg før mote er aktiv
 
 					break;
 
@@ -593,7 +593,7 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 					    if (!logging_is_running() && payload_length == 0){// Actually checked inside ACMP0_IRQHandler() also I guess
 
 					        ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
-					        ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
+					        if(CONFIG_AD_NCHANS>=3) ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
 					        ACMP0_IRQHandler();
 					    }
 
@@ -623,8 +623,9 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 							dust_mote_sleep();
 
 					    	ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
-					    	ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
+					    	if(CONFIG_AD_NCHANS>=3) ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
 					    	ACMP_Reset(ACMP0);
+					    	if(CONFIG_AD_NCHANS>=3) ACMP_Reset(ACMP1);
 					    	DAC_Reset(DAC0);
 					    	ADC_Reset(ADC0);
 

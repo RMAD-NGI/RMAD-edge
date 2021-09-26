@@ -301,7 +301,7 @@ void ACMP0_IRQHandler(void) {
     if (gl_recording_running)return;
 
     ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
-    ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
+    if(CONFIG_AD_NCHANS>=3) ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
 
 
     if(gl_comp_ref_64_ladder){
@@ -595,7 +595,7 @@ void GPIO_EVEN_IRQHandler(void) {
         CMU_ClockEnable(cmuClock_HFPER, true);
         CMU_ClockEnable(cmuClock_ADC0, true);
         CMU_ClockEnable(cmuClock_ACMP0, true);
-        CMU_ClockEnable(cmuClock_ACMP1, true);
+        if(CONFIG_AD_NCHANS>=3) CMU_ClockEnable(cmuClock_ACMP1, true);
         CMU_ClockEnable(cmuClock_DAC0, true);
         CMU_ClockEnable(cmuClock_GPIO, true);
         CMU_ClockEnable(cmuClock_UART0, true);
@@ -739,8 +739,8 @@ void GPIO_EVEN_IRQHandler(void) {
 
                     ACMP_IntClear(ACMP0, ACMP_IF_EDGE);
                     ACMP_IntEnable(ACMP0, ACMP_IF_EDGE);
-                    ACMP_IntClear(ACMP1, ACMP_IF_EDGE);
-                    ACMP_IntEnable(ACMP1, ACMP_IF_EDGE);
+                    if(CONFIG_AD_NCHANS>=3) ACMP_IntClear(ACMP1, ACMP_IF_EDGE);
+                    if(CONFIG_AD_NCHANS>=3) ACMP_IntEnable(ACMP1, ACMP_IF_EDGE);
                 }
 
 

@@ -349,8 +349,9 @@ int battery_charge_status(uint16_t battery_voltage, int16_t logger_temperature)
 				dust_mote_sleep();
 
 				ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
-				ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
+				if(CONFIG_AD_NCHANS>=3) ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
 				ACMP_Reset(ACMP0);
+				if(CONFIG_AD_NCHANS>=3) ACMP_Reset(ACMP1);
 				DAC_Reset(DAC0);
 				ADC_Reset(ADC0);
 
@@ -437,6 +438,7 @@ void comp_config(const uint32_t *const trig_levels, const ACMP_Channel_TypeDef *
 	if(gl_comp_ref_64_ladder){
 
 		single_comp_config(ACMP0, acmpChannelVDD, pos_sels[0], 1);
+		if(CONFIG_AD_NCHANS==3) single_comp_config(ACMP1, acmpChannelVDD, pos_sels[1], 1);
 
 	}else{
 
@@ -459,7 +461,7 @@ void comp_config(const uint32_t *const trig_levels, const ACMP_Channel_TypeDef *
 		//GPIO_PinModeSet(gpioPortB,12,gpioModePushPull,0);
 		//GPIO_PinModeSet(gpioPortB,12,gpioModeWiredAnd,0);
 		single_comp_config(ACMP0, acmpChannelDAC0Ch0, pos_sels[0], 1);
-		//single_comp_config(ACMP1, acmpChannelDAC0Ch0, pos_sels[1], 3);
+		if(CONFIG_AD_NCHANS>=3) single_comp_config(ACMP1, acmpChannelDAC0Ch0, pos_sels[1], 1);
 
 	}
 }

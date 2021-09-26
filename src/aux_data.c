@@ -252,7 +252,7 @@ void get_new_aux_sample(void){  //called from main
 			//ADC_Reset(ADC0);
 
 			ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
-			ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
+			if(CONFIG_AD_NCHANS>=3) ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
 
 
 				if(gl_comp_ref_64_ladder){
@@ -261,7 +261,8 @@ void get_new_aux_sample(void){  //called from main
 
 					if(gl_debug_on_UART1)printf("\naux_data() - vdd_ladder_during_aux = %d", vdd_cmp);
 
-					single_comp_config(ACMP0, acmpChannelVDD, gl_adjustable_params->comp_pos_sels, vdd_cmp + 4);  //comparator negative input // +1 er for lite, +2 sannsynligvis OK, lagt inn +4 for å ha litt å gå på, slik at logger ikke trigger under aux
+					single_comp_config(ACMP0, acmpChannelVDD, gl_adjustable_params->comp_pos_sels[0], vdd_cmp + 4);  //comparator negative input // +1 er for lite, +2 sannsynligvis OK, lagt inn +4 for å ha litt å gå på, slik at logger ikke trigger under aux
+					if(CONFIG_AD_NCHANS>=3) single_comp_config(ACMP1, acmpChannelVDD, gl_adjustable_params->comp_pos_sels[1], vdd_cmp + 4);
 					trigg_ref_set(2600);  //preamp offset
 
 				}else{
@@ -277,8 +278,8 @@ void get_new_aux_sample(void){  //called from main
 
 				ACMP_IntClear(ACMP0, ACMP_IF_EDGE);
 				ACMP_IntEnable(ACMP0, ACMP_IF_EDGE);
-				ACMP_IntClear(ACMP1, ACMP_IF_EDGE);
-				ACMP_IntEnable(ACMP1, ACMP_IF_EDGE);
+				if(CONFIG_AD_NCHANS>=3) ACMP_IntClear(ACMP1, ACMP_IF_EDGE);
+				if(CONFIG_AD_NCHANS>=3) ACMP_IntEnable(ACMP1, ACMP_IF_EDGE);
 
 
 			aux_ad_sampling_rate = AD_config();
@@ -291,12 +292,13 @@ void get_new_aux_sample(void){  //called from main
 
 
 		ACMP_IntDisable(ACMP0, ACMP_IF_EDGE);
-		ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
+		if(CONFIG_AD_NCHANS>=3) ACMP_IntDisable(ACMP1, ACMP_IF_EDGE);
 
 		if(gl_comp_ref_64_ladder){
 
 			trigg_ref_reset(); //preamp offset
-			single_comp_config(ACMP0, acmpChannelVDD, gl_adjustable_params->comp_pos_sels, 1); //comparator negative input
+			single_comp_config(ACMP0, acmpChannelVDD, gl_adjustable_params->comp_pos_sels[0], 1); //comparator negative input
+			if(CONFIG_AD_NCHANS>=3) single_comp_config(ACMP1, acmpChannelVDD, gl_adjustable_params->comp_pos_sels[1], 1);
 
 		}else{
 
@@ -311,8 +313,8 @@ void get_new_aux_sample(void){  //called from main
 
 	    ACMP_IntClear(ACMP0, ACMP_IF_EDGE);
 	    ACMP_IntEnable(ACMP0, ACMP_IF_EDGE);
-	    ACMP_IntClear(ACMP1, ACMP_IF_EDGE);
-	    ACMP_IntEnable(ACMP1, ACMP_IF_EDGE);
+	    if(CONFIG_AD_NCHANS>=3) ACMP_IntClear(ACMP1, ACMP_IF_EDGE);
+	    if(CONFIG_AD_NCHANS>=3) ACMP_IntEnable(ACMP1, ACMP_IF_EDGE);
 
 	    send_aux_data();
 

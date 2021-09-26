@@ -4,12 +4,13 @@
 
 #include <signal.h> // Get sig_atomic_t
 
-#define SW_VERTION 0
+#define SW_VERTION 8
 
 //0 = reserved for development and debugging
 //5 = last offisal release for RMAD-railway and RMAD-geophone, RMAD-railway, RMAD-infrasound
 //6 = intermediate test vertion for RMAD-EDGE
-//7 = first full release of RMAD-EDGE for HW_REVITION 4 to 6, CONFIG_AD_NCHANS 2 and HW_RADIO 0
+//7 = first full release of RMAD-EDGE for HW_REVITION 4 to 6, CONFIG_AD_NCHANS 2
+//8 = update of RMAD-EDGE for HW_REVITION 4 to 6, CONFIG_AD_NCHANS 2 and 4
 
 #define HW_REVITION 6
 
@@ -17,7 +18,7 @@
 //5 = red production board with EFM32 starter kit
 //6 = black production board with EFM32 chip
 
-#define CONFIG_AD_NCHANS 4
+#define CONFIG_AD_NCHANS 2
 
 //#include "process.h"  //unshure if this need to be included. Generatet error when positioned before #define CONFIG_AD_NCHANS 2
 
