@@ -4,7 +4,7 @@
 
 #include <signal.h> // Get sig_atomic_t
 
-#define SW_VERTION 8
+#define SW_VERTION 9
 
 //0 = reserved for development and debugging
 //5 = last offisal release for RMAD-railway and RMAD-geophone, RMAD-railway, RMAD-infrasound
@@ -48,6 +48,7 @@ extern volatile bool gl_recording_running;
 
 extern volatile bool gl_mote_sleep; //mote has been sent to deep sleep due to low battery voltage
 extern volatile bool gl_transport_mode; //logger has been set to transport mode, requieres hard reset to exit
+extern volatile bool gl_comp_ref_64_ladder;
 
 //extern sample_t aux_sample[6];
 

@@ -23,7 +23,7 @@
 
 volatile static int charging = 1;
 volatile int fastcharge;
-volatile bool gl_comp_ref_64_ladder;
+//volatile bool gl_comp_ref_64_ladder;
 
 volatile static int num_aux_samples;
 
@@ -304,6 +304,7 @@ void get_new_aux_sample(void){  //called from main
 
 			DAC0 -> CH1DATA = 0;  //preamp offset
 			DAC0 -> CH0DATA = gl_adjustable_params->comp_trig_levels[0]; //comparator negative input
+			//comp_config(gl_adjustable_params->comp_trig_levels, gl_adjustable_params->comp_pos_sels);
 
 		}
 

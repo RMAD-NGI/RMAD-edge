@@ -1,3 +1,20 @@
+New in RMAD-EDGE software version SW_VERTION: 9
+
+	bugfixes:
+	
+		- joindutucycle redused to 10% after 4 aux packets - approximatly 1 hour (previously 24 hours)
+		- MOTE_CHECK_MIN_INTERVAL increased to 259200 - approximatly 72 hours (previously 24 hours)
+		- set GPIO B12 to input when changing back to DAC ref. Cosmetic fix as testing showed that functionality was working in sw8
+		
+	modified functions:
+	
+		rmad.c
+			-main()
+			
+		dust_com.c
+			-dust_handle_notification()
+	
+
 New in RMAD-EDGE software version SW_VERTION: 8
 
 	new features:
@@ -30,6 +47,9 @@ New in RMAD-EDGE software version SW_VERTION: 8
 	
 	know issues:
 		-Only tested properly for CONFIG_AD_NCHANS = 2 and 4
+		-Very slow setteling of DAC offset for AD channels when using VDD/64 as ref for trigg. Do not revert when switching back to DAC ref, reboot needed for normal operation.
+		-Setting of join dutycyle to 10% after 24 hours do not work together with efm32_reset() in dust_check_and_possibly_reset_mote(). When mote is lost, join dutycylce will always be 100%
+		
 		
 
 

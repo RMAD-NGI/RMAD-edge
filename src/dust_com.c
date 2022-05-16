@@ -35,7 +35,7 @@ static bool gl_packet_ID = true;
 
 volatile bool gl_mote_online_check = false;
 
-volatile bool gl_comp_ref_64_ladder;
+//volatile bool gl_comp_ref_64_ladder;
 
 
 // Most low-level: Sends data to mote, adds 0x7E (HLDC) before and after..
@@ -651,7 +651,8 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 						break;
 
 					case IMSG_SETACOMPREF_DAC:
-											//if (payload_length == 0){
+
+							GPIO_PinModeSet(gpioPortB,12,gpioModeInput,0);
 
 							gl_comp_ref_64_ladder = false;
 							comp_config(gl_adjustable_params->comp_trig_levels, gl_adjustable_params->comp_pos_sels);
@@ -661,14 +662,11 @@ void dust_handle_notification(const packet_with_meta_t *const packet_with_meta)
 						break;
 
 					case IMSG_SETACOMPREF_VDD:
-											//if (payload_length == 0){
 
 							gl_comp_ref_64_ladder = true;
 							comp_config(gl_adjustable_params->comp_trig_levels, gl_adjustable_params->comp_pos_sels);
 
 							trigg_ref_reset();
-			        		//DAC_Reset(DAC0);
-			        		//GPIO_PinModeSet(gpioPortB,12,gpioModeWiredAnd,0); //testing GPIO out as preamp ref during trigg
 
 			        		if(gl_debug_on_UART1)printf("\nSet VDD as trigg reference");
 

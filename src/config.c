@@ -25,7 +25,7 @@ volatile bool prev_low_batt_volt =false;
 
 volatile int fastcharge = 0;
 
-volatile bool gl_comp_ref_64_ladder;
+//volatile bool gl_comp_ref_64_ladder;
 
 
 void GPIO_setup(void)
@@ -438,7 +438,7 @@ void comp_config(const uint32_t *const trig_levels, const ACMP_Channel_TypeDef *
 	if(gl_comp_ref_64_ladder){
 
 		single_comp_config(ACMP0, acmpChannelVDD, pos_sels[0], 1);
-		if(CONFIG_AD_NCHANS==3) single_comp_config(ACMP1, acmpChannelVDD, pos_sels[1], 1);
+		if(CONFIG_AD_NCHANS>=3) single_comp_config(ACMP1, acmpChannelVDD, pos_sels[1], 1);
 
 	}else{
 
@@ -448,7 +448,6 @@ void comp_config(const uint32_t *const trig_levels, const ACMP_Channel_TypeDef *
 		dacInit.reference = dacRef2V5;
 		dacInit.outMode = dacOutputPinADC;
 		dacInit.convMode = dacConvModeContinuous;
-
 		dchInit.enable = true;
 
 		DAC_Init(DAC0, &dacInit);
@@ -498,7 +497,7 @@ void uart0_config(void)
 
     USART_InitAsync_TypeDef uartInit = USART_INITASYNC_DEFAULT;
 
-    uartInit.enable = usartEnable ;
+    uartInit.enable = usartEnable;
     uartInit.parity = usartNoParity;
     uartInit.stopbits = usartStopbits1;
     uartInit.databits = usartDatabits8;

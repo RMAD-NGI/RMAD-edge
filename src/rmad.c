@@ -40,7 +40,7 @@
 #define IF_IS_SAFE // See coment in main(). Pretty sure it is OK to define.
 #define RESET_MOTE_AT_START // OK defined and undefined, but probably best defined. Otherwise the socket bind likely fails and we get a reset anyway, after some time.
 #define MOTE_REPORT_MIN_INTERVAL 900 // seconds. Too often => Perhaps lots of battery use (on mote). Also used for system check and reporting.
-#define MOTE_CHECK_MIN_INTERVAL 86400 // seconds. Too often => Perhaps lots of battery use (on mote). Also used for system check and reporting.
+#define MOTE_CHECK_MIN_INTERVAL 259200 // seconds. Too often => Perhaps lots of battery use (on mote). Also used for system check and reporting.
 #define MIN_WAIT_MS_EM  1  // 1 ms, > 0 => be sure not to (almost ?) busy-loop. I am guessing 0 is also OK.
 // Seemed like we did, maybe because of some strange unknown interrupts,
 // or maybe UART interrupts (but didn't break on breakpoint?), or maybe some bug.
@@ -616,7 +616,7 @@ void GPIO_EVEN_IRQHandler(void) {
         uart0_config();
         //uart1_config();
 
-        if(gl_comp_ref_64_ladder)trigg_ref_reset();
+        if(gl_comp_ref_64_ladder) trigg_ref_reset();
 
         comp_config(gl_adjustable_params->comp_trig_levels,gl_adjustable_params->comp_pos_sels);
 
@@ -803,7 +803,7 @@ void GPIO_EVEN_IRQHandler(void) {
 
                 	//if(gl_debug_on_UART1)printf("\n\nmain() aux_send on interval, iteration = %d", aux_iteration);
 
-                	if(aux_iteration == 96){ // reduce joinDutyCycle after 24 timer from boot
+                	if(aux_iteration == 4){ // reduce joinDutyCycle after 24 timer from boot
 
                 		DUST_SEND({0x01, 0x02, 0x02, 0x06, 0x18}); // Set joinDutyCycle to 10%
 
